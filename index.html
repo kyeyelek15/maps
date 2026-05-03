@@ -1,0 +1,2210 @@
+<!DOCTYPE html>
+<html lang="pl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-Mapy</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dom-to-image-more@3.4.1/dist/dom-to-image-more.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+:root,[data-theme="light"]{
+  --color-bg:#f7f6f2;--color-surface:#f9f8f5;--color-surface-2:#fbfbf9;
+  --color-surface-offset:#f3f0ec;--color-border:#d4d1ca;--color-divider:#dcd9d5;
+  --color-text:#28251d;--color-text-muted:#7a7974;--color-text-faint:#bab9b4;
+  --color-primary:#01696f;--color-primary-hover:#0c4e54;--color-primary-highlight:#cedcd8;
+  --color-error:#a12c7b;--color-success:#437a22;
+  --font-body:'Satoshi',system-ui,sans-serif;
+  --font-display:'Cabinet Grotesk',system-ui,sans-serif;
+  --text-xs:clamp(0.75rem,0.7rem + 0.25vw,0.875rem);
+  --text-sm:clamp(0.875rem,0.8rem + 0.35vw,1rem);
+  --text-base:clamp(1rem,0.95rem + 0.25vw,1.125rem);
+  --text-lg:clamp(1.125rem,1rem + 0.75vw,1.5rem);
+  --text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem);
+  --space-1:.25rem;--space-2:.5rem;--space-3:.75rem;--space-4:1rem;
+  --space-5:1.25rem;--space-6:1.5rem;--space-8:2rem;--space-10:2.5rem;
+  --radius-sm:.375rem;--radius-md:.5rem;--radius-lg:.75rem;--radius-xl:1rem;--radius-full:9999px;
+  --shadow-sm:0 1px 2px oklch(0.2 0.01 80/0.06);
+  --shadow-md:0 4px 12px oklch(0.2 0.01 80/0.08);
+  --shadow-lg:0 12px 32px oklch(0.2 0.01 80/0.12);
+  --transition:180ms cubic-bezier(0.16,1,0.3,1);
+}
+[data-theme="dark"]{
+  --color-bg:#171614;--color-surface:#1c1b19;--color-surface-2:#201f1d;
+  --color-surface-offset:#2d2c2a;--color-border:#393836;--color-divider:#262523;
+  --color-text:#cdccca;--color-text-muted:#797876;--color-text-faint:#5a5957;
+  --color-primary:#4f98a3;--color-primary-hover:#227f8b;--color-primary-highlight:#313b3b;
+  --color-error:#d163a7;--color-success:#6daa45;
+  --shadow-sm:0 1px 2px oklch(0 0 0/0.2);
+  --shadow-md:0 4px 12px oklch(0 0 0/0.3);
+  --shadow-lg:0 12px 32px oklch(0 0 0/0.4);
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme]){
+  --color-bg:#171614;--color-surface:#1c1b19;--color-surface-2:#201f1d;
+  --color-surface-offset:#2d2c2a;--color-border:#393836;--color-divider:#262523;
+  --color-text:#cdccca;--color-text-muted:#797876;--color-text-faint:#5a5957;
+  --color-primary:#4f98a3;--color-primary-hover:#227f8b;--color-primary-highlight:#313b3b;
+  --color-error:#d163a7;--color-success:#6daa45;
+}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow:hidden;height:100dvh}html{-webkit-font-smoothing:antialiased}
+body{height:100dvh;font-family:var(--font-body);font-size:var(--text-base);color:var(--color-text);background:var(--color-bg);display:flex;flex-direction:column}
+img,svg{display:block;max-width:100%}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+a,button,input,select{transition:color var(--transition),background var(--transition),border-color var(--transition),box-shadow var(--transition)}
+:focus-visible{outline:2px solid var(--color-primary);outline-offset:3px;border-radius:var(--radius-sm)}
+
+.header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-6);background:var(--color-surface);border-bottom:1px solid oklch(from var(--color-text) l c h/0.10);box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:1000;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:var(--space-3);text-decoration:none;color:var(--color-text)}
+.logo-name{font-family:var(--font-display);font-size:var(--text-lg);font-weight:800;letter-spacing:-0.02em}
+.header-actions{display:flex;align-items:center;gap:var(--space-3)}
+.btn{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);border-radius:var(--radius-md);font-size:var(--text-sm);font-weight:500;border:1px solid transparent;transition:all var(--transition);cursor:pointer}
+.btn-primary{background:var(--color-primary);color:#fff;border-color:var(--color-primary)}
+.btn-primary:hover{background:var(--color-primary-hover);border-color:var(--color-primary-hover)}
+.btn-ghost{color:var(--color-text-muted);border-color:oklch(from var(--color-text) l c h/0.14);background:transparent}
+.btn-ghost:hover{background:var(--color-surface-offset);color:var(--color-text)}
+.btn-sm{padding:var(--space-1) var(--space-3);font-size:var(--text-xs)}
+.theme-toggle{padding:var(--space-2);border-radius:var(--radius-md);color:var(--color-text-muted);border:1px solid oklch(from var(--color-text) l c h/0.12)}
+.theme-toggle:hover{background:var(--color-surface-offset);color:var(--color-text)}
+
+.app{display:flex;flex:1;overflow:hidden;height:calc(100dvh - 57px)}
+.sidebar{width:340px;flex-shrink:0;background:var(--color-surface);border-right:1px solid oklch(from var(--color-text) l c h/0.10);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-tabs{display:flex;border-bottom:1px solid var(--color-divider);flex-shrink:0}
+.tab{flex:1;padding:var(--space-3) var(--space-2);font-size:var(--text-sm);font-weight:500;color:var(--color-text-muted);border-bottom:2px solid transparent;transition:all var(--transition);cursor:pointer}
+.tab.active{color:var(--color-primary);border-bottom-color:var(--color-primary)}
+.tab:hover:not(.active){color:var(--color-text);background:var(--color-surface-offset)}
+.sidebar-content{flex:1;overflow-y:auto;padding:var(--space-4);overscroll-behavior:contain}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+.form-group{margin-bottom:var(--space-4)}
+label{display:block;font-size:var(--text-sm);font-weight:500;color:var(--color-text-muted);margin-bottom:var(--space-1)}
+input[type="text"],input[type="number"],select,textarea{width:100%;padding:var(--space-2) var(--space-3);background:var(--color-surface-2);border:1px solid oklch(from var(--color-text) l c h/0.14);border-radius:var(--radius-md);font-size:var(--text-sm);color:var(--color-text)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--color-primary);box-shadow:0 0 0 3px oklch(from var(--color-primary) l c h/0.15)}
+.input-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)}
+.section-title{font-family:var(--font-display);font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-3);color:var(--color-text)}
+.divider{height:1px;background:var(--color-divider);margin:var(--space-5) 0}
+
+.color-row{display:flex;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-2)}
+.color-swatch{width:26px;height:26px;border-radius:var(--radius-full);cursor:pointer;border:2px solid transparent;transition:all var(--transition);flex-shrink:0}
+.color-swatch.selected,.color-swatch:hover{border-color:var(--color-text);transform:scale(1.15)}
+
+.points-list{display:flex;flex-direction:column;gap:var(--space-2)}
+.point-item{background:var(--color-surface-2);border:1px solid oklch(from var(--color-text) l c h/0.10);border-radius:var(--radius-lg);padding:var(--space-3);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-2)}
+.point-item:hover{box-shadow:var(--shadow-sm)}
+.point-info{flex:1;min-width:0}
+.point-name{font-weight:600;font-size:var(--text-sm);color:var(--color-text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.point-coords{font-size:var(--text-xs);color:var(--color-text-muted);font-variant-numeric:tabular-nums}
+.point-actions{display:flex;gap:var(--space-1)}
+.icon-btn{padding:var(--space-1);border-radius:var(--radius-sm);color:var(--color-text-muted);border:1px solid transparent}
+.icon-btn:hover{background:var(--color-surface-offset);color:var(--color-text)}
+.icon-btn.delete:hover{background:oklch(from var(--color-error) l c h/0.1);color:var(--color-error)}
+.empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:var(--space-10) var(--space-6);color:var(--color-text-muted)}
+.empty-state p{max-width:28ch;font-size:var(--text-sm);line-height:1.5}
+
+.route-row{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-2);border:1px solid oklch(from var(--color-text) l c h/0.10);border-radius:var(--radius-md);cursor:pointer;transition:background var(--transition)}
+.route-row:hover{background:var(--color-surface-offset)}
+.route-row.selected{background:var(--color-primary-highlight);border-color:oklch(from var(--color-primary) l c h/0.35)}
+.route-order{width:20px;height:20px;border-radius:var(--radius-full);background:var(--color-primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.distance-card{background:var(--color-primary-highlight);border:1px solid oklch(from var(--color-primary) l c h/0.3);border-radius:var(--radius-lg);padding:var(--space-4);margin-top:var(--space-4)}
+.distance-value{font-family:var(--font-display);font-size:var(--text-xl);font-weight:800;color:var(--color-primary);font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.distance-label{font-size:var(--text-xs);color:var(--color-text-muted);margin-top:2px}
+.distance-sub{font-size:var(--text-sm);color:var(--color-text-muted);margin-top:var(--space-2)}
+.dist-row{background:var(--color-surface-2);border:1px solid oklch(from var(--color-text) l c h/0.10);border-radius:var(--radius-md);padding:var(--space-3);font-size:var(--text-sm);margin-bottom:var(--space-2)}
+.dist-route{color:var(--color-text-muted);font-size:var(--text-xs);margin-bottom:2px}
+.dist-val{color:var(--color-primary);font-weight:700;font-variant-numeric:tabular-nums}
+.badge{display:inline-flex;align-items:center;padding:2px var(--space-2);border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:600;background:var(--color-primary-highlight);color:var(--color-primary)}
+
+.map-container{flex:1;position:relative}
+#map{width:100%;height:100%}
+
+.cursor-info-wrap {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+}
+.cursor-info-toggle {
+  pointer-events: all;
+  background: rgba(0,0,0,0.45);
+  border: none;
+  border-radius: 5px;
+  color: rgba(255,255,255,0.6);
+  font-size: 10px;
+  padding: 2px 7px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  align-self: flex-end;
+  transition: background 0.2s;
+}
+.cursor-info-toggle:hover { background: rgba(0,0,0,0.65); color:#fff; }
+.cursor-info {
+  background: rgba(0,0,0,0.52);
+  color: #fff;
+  font-size: 11px;
+  font-family: system-ui, sans-serif;
+  padding: 6px 12px;
+  border-radius: 7px;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  display: flex;
+  gap: 14px;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+.cursor-info.hidden { display: none; }
+.cursor-info .ci-block { display: flex; align-items: baseline; gap: 5px; }
+.cursor-info .ci-label { font-size: 9px; font-weight: 600; letter-spacing: 1px; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+.cursor-info .ci-val { font-size: 11px; font-weight: 500; color: #fff; font-variant-numeric: tabular-nums; }
+.cursor-info .ci-sep { width: 1px; background: rgba(255,255,255,0.12); }
+.toast-container{position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:9999;display:flex;flex-direction:column;gap:var(--space-2);pointer-events:none}
+.toast{background:var(--color-surface);border:1px solid oklch(from var(--color-text) l c h/0.12);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-lg);font-size:var(--text-sm);color:var(--color-text);animation:toastIn .3s ease forwards;pointer-events:auto;display:flex;align-items:center;gap:var(--space-2)}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateY(8px)}}
+
+.area-label-icon{background:none!important;border:none!important;box-shadow:none!important}
+.area-tooltip{background:none!important;border:none!important;box-shadow:none!important;padding:0!important;margin:0!important}
+.area-tooltip::before{display:none!important}
+@media(max-width:768px){
+  .sidebar{width:100%;max-height:45vh;border-right:none;border-top:1px solid var(--color-divider)}
+  .app{flex-direction:column-reverse}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="logo" href="#">
+    <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-label="K-Mapy">
+      <circle cx="16" cy="16" r="15" fill="var(--color-primary)" opacity=".15"/>
+      <circle cx="16" cy="14" r="5" fill="var(--color-primary)"/>
+      <path d="M16 19C16 19 9 24 9 29L23 29C23 24 16 19 16 19Z" fill="var(--color-primary)" opacity=".5"/>
+      <circle cx="16" cy="14" r="2.5" fill="white"/>
+    </svg>
+    <span class="logo-name">K-Mapy</span>
+  </a>
+  <div class="header-actions">
+    <div style="display:flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-2);background:var(--color-surface-offset);border-radius:var(--radius-md);border:1px solid oklch(from var(--color-text) l c h/0.12)">
+      <span style="font-size:var(--text-xs);color:var(--color-text-muted);white-space:nowrap">Obszar:</span>
+      <label style="display:flex;align-items:center;gap:3px;font-size:var(--text-xs);color:var(--color-text-muted);cursor:pointer;margin:0">
+        <input type="radio" name="exportMode" value="auto" checked style="accent-color:var(--color-primary)"> Auto
+      </label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:var(--text-xs);color:var(--color-text-muted);cursor:pointer;margin:0">
+        <input type="radio" name="exportMode" value="current" style="accent-color:var(--color-primary)"> Widok
+      </label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:var(--text-xs);color:var(--color-text-muted);cursor:pointer;margin:0">
+        <input type="radio" name="exportMode" value="manual" style="accent-color:var(--color-primary)"> Ręcznie
+      </label>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="exportJpgBtn">JPG</button>
+    <button class="btn btn-ghost btn-sm" id="exportPdfBtn">PDF</button>
+    <button class="btn btn-ghost btn-sm" id="saveProjectBtn">Zapisz projekt</button>
+    <button class="btn btn-ghost btn-sm" id="loadProjectBtn">Wczytaj projekt</button>
+    <input type="file" id="loadProjectInput" accept=".json" style="display:none">
+    <button class="btn btn-ghost btn-sm" id="clearMapBtn">Wyczyść</button>
+    <button class="theme-toggle" id="themeToggle" aria-label="Przełącz tryb">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-tabs">
+      <button class="tab active" data-tab="add">Dodaj punkt</button>
+      <button class="tab" data-tab="points">Punkty</button>
+      <button class="tab" data-tab="distance">Odległości</button>
+      <button class="tab" data-tab="fresnel">Fresnel</button>
+    </div>
+
+    <div class="sidebar-content">
+
+      <!-- TAB: DODAJ PUNKT -->
+      <div class="tab-panel active" id="panel-add">
+        <p class="section-title">Nowy punkt</p>
+        <div class="form-group">
+          <label for="pointName">Nazwa</label>
+          <input type="text" id="pointName" placeholder="np. Dom, Punkt A…"/>
+        </div>
+        <div class="input-row">
+          <div class="form-group">
+            <label for="lat">Szerokość (lat)</label>
+            <input type="number" id="lat" step="0.000001" placeholder="52.2297"/>
+          </div>
+          <div class="form-group">
+            <label for="lon">Długość (lon)</label>
+            <input type="number" id="lon" step="0.000001" placeholder="21.0122"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Kolor markera</label>
+          <div class="color-row" id="markerColorPicker"></div>
+        </div>
+        <button class="btn btn-primary" id="addPointBtn" style="width:100%;justify-content:center">Dodaj punkt</button>
+        <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2)">
+          <input type="checkbox" id="autoCopyCheck" style="width:14px;height:14px;accent-color:var(--color-primary);cursor:pointer">
+          <label for="autoCopyCheck" style="font-size:var(--text-xs);color:var(--color-text-faint);cursor:pointer;margin:0">Automatycznie kopiuj współrzędne do schowka po kliknięciu mapy</label>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2)">
+          <input type="checkbox" id="autoTabCheck" style="width:14px;height:14px;accent-color:var(--color-primary);cursor:pointer">
+          <label for="autoTabCheck" style="font-size:var(--text-xs);color:var(--color-text-faint);cursor:pointer;margin:0">Przełączaj na zakładkę „Dodaj punkt" po kliknięciu mapy</label>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2)">
+          <input type="checkbox" id="autoZoomCheck" checked style="width:14px;height:14px;accent-color:var(--color-primary);cursor:pointer">
+          <label for="autoZoomCheck" style="font-size:var(--text-xs);color:var(--color-text-muted);cursor:pointer;margin:0">Automatycznie przybliżaj mapę po dodaniu punktu</label>
+        </div>
+
+        <div class="divider"></div>
+        <p class="section-title">Kształty na mapie</p>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3);line-height:1.5">Użyj paska narzędzi na mapie:<br><strong>Okrąg · Linia · Wielokąt · Prostokąt</strong></p>
+        <div class="form-group">
+          <label>Kolor kształtów</label>
+          <div class="color-row" id="shapeColorPicker"></div>
+        </div>
+
+        <div class="divider"></div>
+        <p class="section-title">Etykieta tekstowa</p>
+        <div class="form-group">
+          <label for="labelText">Treść</label>
+          <input type="text" id="labelText" placeholder="np. Centrum, Granica…"/>
+        </div>
+        <div class="input-row">
+          <div class="form-group">
+            <label for="labelFont">Czcionka</label>
+            <select id="labelFont">
+              <option value="Arial, sans-serif">Arial</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="'Courier New', monospace">Courier New</option>
+              <option value="Impact, sans-serif">Impact</option>
+              <option value="Verdana, sans-serif">Verdana</option>
+              <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="labelSize">Rozmiar</label>
+            <select id="labelSize">
+              <option value="12">12px</option>
+              <option value="14">14px</option>
+              <option value="16" selected>16px</option>
+              <option value="20">20px</option>
+              <option value="24">24px</option>
+              <option value="32">32px</option>
+              <option value="40">40px</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Kolor tekstu</label>
+          <div class="color-row" id="labelColorPicker"></div>
+        </div>
+        <button class="btn btn-primary" id="addLabelBtn" style="width:100%;justify-content:center">Dodaj etykietę na mapie</button>
+        <p style="font-size:var(--text-xs);color:var(--color-text-faint);margin-top:var(--space-2)" id="labelHint">Kliknij przycisk, następnie kliknij miejsce na mapie.</p>
+      </div>
+
+      <!-- TAB: PUNKTY -->
+      <div class="tab-panel" id="panel-points">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+          <p class="section-title" style="margin:0">Zapisane punkty</p>
+          <span class="badge" id="pointCount">0</span>
+        </div>
+        <div class="points-list" id="pointsList">
+          <div class="empty-state" id="emptyPoints">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--color-text-faint);margin-bottom:var(--space-3)"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <p>Brak punktów. Dodaj pierwszy przez formularz lub kliknij na mapę.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: ODLEGŁOŚCI -->
+      <div class="tab-panel" id="panel-distance">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+          <p class="section-title" style="margin:0">Trasa przez punkty</p>
+          <div style="display:flex;align-items:center;gap:var(--space-2)">
+            <label style="font-size:var(--text-xs);color:var(--color-text-muted);margin:0">Jednostki:</label>
+            <select id="unitSelect" style="width:auto;padding:var(--space-1) var(--space-2);font-size:var(--text-xs)">
+              <option value="auto">Auto (m/km)</option>
+              <option value="m">Metry (m)</option>
+              <option value="km">Kilometry (km)</option>
+            </select>
+          </div>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3);line-height:1.5">Zaznacz punkty w kolejności trasy — zostanie narysowana linia łącząca je wszystkie.</p>
+        <div id="routeList" style="display:flex;flex-direction:column;gap:var(--space-2)">
+          <div class="empty-state" id="routeEmpty" style="padding:var(--space-6)">
+            <p>Dodaj punkty, by móc wybrać trasę.</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)">
+          <button class="btn btn-primary" id="calcRouteBtn" style="flex:1;justify-content:center">Oblicz trasę</button>
+          <button class="btn btn-ghost" id="selectAllRouteBtn">Wszystkie</button>
+          <button class="btn btn-ghost" id="clearRouteBtn">Wyczyść</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:var(--space-2);margin-bottom:var(--space-1)">
+          <label style="font-size:var(--text-xs);color:var(--color-text-muted);margin:0;white-space:nowrap">Kolor:</label>
+          <div class="color-row" id="routeLabelColorPicker" style="margin:0"></div>
+        </div>
+        <div id="routeResult" style="display:none">
+          <div class="distance-card">
+            <div class="distance-value" id="routeTotalDist">—</div>
+            <div class="distance-label">łączna długość trasy</div>
+            <div class="distance-sub" id="routeMeta"></div>
+          </div>
+          <div id="routeSegments" style="margin-top:var(--space-3)"></div>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+          <p class="section-title" style="margin:0">Wszystkie odległości</p>
+          <div style="display:flex;gap:var(--space-2)">
+            <button class="btn btn-ghost btn-sm" id="calcAllBtn">Oblicz wszystkie</button>
+            <button class="btn btn-ghost btn-sm" id="clearAllBtn">Wyczyść</button>
+          </div>
+        </div>
+        <div id="allDistances"></div>
+
+        <div class="divider"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+          <p class="section-title" style="margin:0">Pole powierzchni</p>
+          <div style="display:flex;align-items:center;gap:var(--space-2)">
+            <label style="font-size:var(--text-xs);color:var(--color-text-muted);margin:0">Jednostki:</label>
+            <select id="areaUnitSelect" style="width:auto;padding:var(--space-1) var(--space-2);font-size:var(--text-xs)">
+              <option value="auto">Auto (m²/km²)</option>
+              <option value="m2">m²</option>
+              <option value="km2">km²</option>
+            </select>
+          </div>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3);line-height:1.5">Zaznacz co najmniej 3 punkty w zakładce trasy, by obliczyć pole wielokąta.</p>
+        <div class="form-group">
+          <label>Kolor obszaru</label>
+          <div class="color-row" id="areaColorPicker"></div>
+        </div>
+        <div class="form-group">
+          <label>Kolor etykiety obszaru</label>
+          <div class="color-row" id="areaLabelColorPicker"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)">
+          <input type="checkbox" id="showAreaLabel" style="width:14px;height:14px;accent-color:var(--color-primary);cursor:pointer">
+          <label for="showAreaLabel" style="font-size:var(--text-xs);color:var(--color-text-muted);cursor:pointer;margin:0">Pokaż etykietę pola na mapie</label>
+        </div>
+        <div style="display:flex;gap:var(--space-2)">
+          <button class="btn btn-ghost" id="calcAreaBtn" style="flex:1;justify-content:center">Oblicz pole powierzchni</button>
+          <button class="btn btn-ghost" id="clearAreaBtn">Wyczyść</button>
+        </div>
+        <div id="areaResult" style="display:none;margin-top:var(--space-3)" class="distance-card">
+          <div class="distance-value" id="areaM2">—</div>
+          <div class="distance-label" id="areaUnit">pole powierzchni wielokąta</div>
+          <div class="distance-sub" id="areaKm2"></div>
+        </div>
+      </div>
+
+      <!-- FRESNEL TAB -->
+      <div class="tab-panel" id="panel-fresnel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3)">
+          <p class="section-title" style="margin:0">Strefa Fresnela</p>
+        </div>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-3);line-height:1.5">Wybierz 2 punkty i podaj parametry łącza.</p>
+
+        <div class="form-group">
+          <label>Punkt A</label>
+          <select id="fresnelPointA" style="width:100%;padding:var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            <option value="">— wybierz punkt —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Punkt B</label>
+          <select id="fresnelPointB" style="width:100%;padding:var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            <option value="">— wybierz punkt —</option>
+          </select>
+        </div>
+
+        <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-4)">
+          <div style="flex:1">
+            <label style="display:block;font-size:var(--text-sm);font-weight:500;margin-bottom:4px">Wys. anteny A (m)</label>
+            <input type="number" id="fresnelHa" value="3" min="0" step="0.5" style="width:100%;padding:var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+          </div>
+          <div style="flex:1">
+            <label style="display:block;font-size:var(--text-sm);font-weight:500;margin-bottom:4px">Wys. anteny B (m)</label>
+            <input type="number" id="fresnelHb" value="3" min="0" step="0.5" style="width:100%;padding:var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Częstotliwość</label>
+          <div style="display:flex;gap:var(--space-2);align-items:center">
+            <input type="number" id="fresnelFreq" value="2400" min="1" step="1" style="flex:1;min-width:0;padding:var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            <select id="fresnelFreqUnit" style="width:80px;flex-shrink:0;padding:var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+              <option value="MHz">MHz</option>
+              <option value="GHz">GHz</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--color-border);margin:var(--space-3) 0;padding-top:var(--space-3)">
+          <p style="font-size:var(--text-xs);font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:var(--space-3)">Parametry radia</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+            <div>
+              <label style="display:block;font-size:var(--text-xs);margin-bottom:3px">Zysk ant. A (dBi)</label>
+              <input type="number" id="fresnelGainA" value="23" step="0.5" style="width:100%;padding:var(--space-1) var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            </div>
+            <div>
+              <label style="display:block;font-size:var(--text-xs);margin-bottom:3px">Zysk ant. B (dBi)</label>
+              <input type="number" id="fresnelGainB" value="23" step="0.5" style="width:100%;padding:var(--space-1) var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            </div>
+            <div>
+              <label style="display:block;font-size:var(--text-xs);margin-bottom:3px">Moc Tx A (dBm)</label>
+              <input type="number" id="fresnelTxA" value="23" step="1" style="width:100%;padding:var(--space-1) var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            </div>
+            <div>
+              <label style="display:block;font-size:var(--text-xs);margin-bottom:3px">Moc Tx B (dBm)</label>
+              <input type="number" id="fresnelTxB" value="23" step="1" style="width:100%;padding:var(--space-1) var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            </div>
+            <div>
+              <label style="display:block;font-size:var(--text-xs);margin-bottom:3px">Straty kabla A (dB)</label>
+              <input type="number" id="fresnelCableA" value="0" min="0" step="0.5" style="width:100%;padding:var(--space-1) var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            </div>
+            <div>
+              <label style="display:block;font-size:var(--text-xs);margin-bottom:3px">Straty kabla B (dB)</label>
+              <input type="number" id="fresnelCableB" value="0" min="0" step="0.5" style="width:100%;padding:var(--space-1) var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            </div>
+            <div>
+              <label style="display:block;font-size:var(--text-xs);margin-bottom:3px">Noise Figure (dB)</label>
+              <input type="number" id="fresnelNF" value="5" min="0" step="0.5" style="width:100%;padding:var(--space-1) var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            </div>
+            <div>
+              <label style="display:block;font-size:var(--text-xs);margin-bottom:3px">Target SNR (dB)</label>
+              <input type="number" id="fresnelSNR" value="40" min="0" step="1" style="width:100%;padding:var(--space-1) var(--space-2);font-size:var(--text-sm);border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text)">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="calcFresnelBtn" style="width:100%;justify-content:center;margin-bottom:var(--space-4)">Oblicz strefę Fresnela</button>
+
+        <div id="fresnelResult" style="display:none">
+          <canvas id="fresnelChart" style="width:100%;border-radius:var(--radius-md);cursor:zoom-in" title="Kliknij aby powiększyć"></canvas>
+          <table id="fresnelTable" style="width:100%;margin-top:var(--space-3);font-size:var(--text-xs);border-collapse:collapse"></table>
+        </div>
+      </div>    </div>
+  </aside>
+
+  <div class="map-container">
+    <div id="map"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+<div class="cursor-info-wrap">
+  <button class="cursor-info-toggle" id="cursorInfoToggle">ukryj ▲</button>
+  <div class="cursor-info" id="cursorInfo">
+    <div class="ci-block"><span class="ci-label">Lat</span><span class="ci-val" id="ciLat">—</span></div>
+    <div class="ci-sep"></div>
+    <div class="ci-block"><span class="ci-label">Lng</span><span class="ci-val" id="ciLng">—</span></div>
+    <div class="ci-sep"></div>
+    <div class="ci-block"><span class="ci-label">Wys</span><span class="ci-val" id="ciElev">—</span></div>
+  </div>
+</div>
+
+<script>
+
+// ============================================================
+// PALETA KOLORÓW
+// ============================================================
+const COLORS = [
+  { hex: '#ff3b30', label: 'Czerwony' },
+  { hex: '#ff9500', label: 'Pomarańczowy' },
+  { hex: '#ffcc00', label: 'Żółty' },
+  { hex: '#34c759', label: 'Zielony' },
+  { hex: '#00bfff', label: 'Błękitny' },
+  { hex: '#0a84ff', label: 'Niebieski' },
+  { hex: '#bf5af2', label: 'Fioletowy' },
+  { hex: '#ff2d55', label: 'Różowy' },
+  { hex: '#ffffff', label: 'Biały', border: true },
+  { hex: '#111111', label: 'Czarny' },
+];
+
+function buildPicker(containerId, defaultColor, onChange) {
+  const container = document.getElementById(containerId);
+  let selected = defaultColor;
+  COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch' + (c.hex === defaultColor ? ' selected' : '');
+    sw.style.background = c.hex;
+    if (c.border) sw.style.border = '2px solid #ccc';
+    sw.title = c.label;
+    sw.addEventListener('click', () => {
+      container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+      selected = c.hex;
+      onChange(c.hex);
+    });
+    container.appendChild(sw);
+  });
+  return () => selected;
+}
+
+// ============================================================
+// STAN
+// ============================================================
+let points = [];
+let markerColor = '#ff3b30';
+let shapeColor = '#ff3b30';
+let labelColor = '#ff3b30';
+let areaColor  = '#ff3b30';
+let areaLabelColor = '#ffffff';
+let routeLabelColor = '#ffcc00';
+let labelMode = false;
+let routeLine = null;
+let routeSelected = [];
+const labelMarkers = [];
+
+const getMarkerColor = buildPicker('markerColorPicker', markerColor, v => { markerColor = v; });
+const getShapeColor  = buildPicker('shapeColorPicker',  shapeColor,  v => {
+  shapeColor = v;
+  rebuildDrawControl();
+});
+const getLabelColor  = buildPicker('labelColorPicker',  '#ff3b30',   v => { labelColor = v; });
+const getRouteLabelColor = buildPicker('routeLabelColorPicker', '#ffcc00', v => {
+  routeLabelColor = v;
+  if (routeLine) recalcRoute(false);
+});
+const getAreaColor   = buildPicker('areaColorPicker',   areaColor,   v => {
+  areaColor = v;
+  if (window._areaPolygon) { window._areaPolygon.setStyle({ color: areaColor, fillColor: areaColor }); }
+  updateAreaLabel();
+});
+const getAreaLabelColor = buildPicker('areaLabelColorPicker', '#ffffff', v => {
+  areaLabelColor = v;
+  updateAreaLabel();
+});
+
+// ============================================================
+// MAPA
+// ============================================================
+const map = L.map('map', { center: [52.069, 19.480], zoom: 6, scrollWheelZoom: false });
+
+const layerStreet = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> © <a href="https://carto.com/" target="_blank">CARTO</a>',
+  subdomains: 'abcd', maxZoom: 19, crossOrigin: true
+});
+// CartoDB Dark Matter
+const layerDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd', maxZoom: 19, crossOrigin: true
+});
+// CartoDB Positron (jasna, czysta)
+const layerLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd', maxZoom: 19, crossOrigin: true
+});
+// OSM France — pełne dane OSM z numerami budynków
+const layerOSMBright = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  subdomains: 'abc', maxZoom: 20, crossOrigin: true
+});
+// OpenTopoMap — mapa topograficzna z warstwicami
+const layerTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://opentopomap.org">OpenTopoMap</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  subdomains: 'abc', maxZoom: 17, crossOrigin: true
+});
+const layerSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: '© Esri — Maxar, Earthstar Geographics',
+  maxZoom: 19, crossOrigin: true
+});
+layerStreet.addTo(map);
+L.control.layers({ '🗺 Mapa': layerStreet, '🏘 Ulice i budynki': layerOSMBright, '⛰ Topograficzna': layerTopo, '☀ Jasna': layerLight, '🌙 Ciemna': layerDark, '🛰 Satelita': layerSatellite }, {}, { position: 'topright', collapsed: false }).addTo(map);
+
+// ============================================================
+// LEAFLET DRAW
+// ============================================================
+const drawnItems = new L.FeatureGroup().addTo(map);
+let drawControl;
+
+function rebuildDrawControl() {
+  if (drawControl) drawControl.remove();
+  drawControl = new L.Control.Draw({
+    edit: { featureGroup: drawnItems },
+    draw: {
+      polyline:  { shapeOptions: { color: shapeColor, weight: 3 } },
+      polygon:   { shapeOptions: { color: shapeColor, fillOpacity: 0.15, weight: 2 } },
+      rectangle: { shapeOptions: { color: shapeColor, fillOpacity: 0.15, weight: 2 } },
+      circle:    { shapeOptions: { color: shapeColor, fillOpacity: 0.10, weight: 2 } },
+      circlemarker: false,
+      marker: false
+    }
+  });
+  map.addControl(drawControl);
+}
+rebuildDrawControl();
+
+map.on(L.Draw.Event.CREATED, function(e) {
+  const layer = e.layer;
+  if (layer.setStyle) layer.setStyle({ color: shapeColor, fillColor: shapeColor, fillOpacity: 0.15, weight: 2 });
+  drawnItems.addLayer(layer);
+  let info = '';
+  if (e.layerType === 'circle') info = 'Promień: ' + formatDist(layer.getRadius());
+  else if (e.layerType === 'polyline') {
+    const ll = layer.getLatLngs(); let t = 0;
+    for (let i = 1; i < ll.length; i++) t += ll[i-1].distanceTo(ll[i]);
+    info = 'Długość: ' + formatDist(t);
+  }
+  if (info) layer.bindPopup(info);
+  showToast(info || 'Kształt dodany', 'success');
+});
+
+// ============================================================
+// MARKERY
+// ============================================================
+function makeIcon(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="40" viewBox="0 0 28 40">
+    <path d="M14 0C6.27 0 0 6.27 0 14c0 9.65 14 26 14 26S28 23.65 28 14C28 6.27 21.73 0 14 0z" fill="${color}"/>
+    <circle cx="14" cy="14" r="5" fill="white"/>
+  </svg>`;
+  return L.divIcon({ html: svg, className: '', iconSize: [28,40], iconAnchor: [14,40], popupAnchor: [0,-42] });
+}
+
+function updateMarkerPopup(point) {
+  point.marker.unbindPopup();
+  const swatches = COLORS.map(c =>
+    `<div onclick="changePointColor(${point.id},'${c.hex}')" title="${c.label}" style="width:20px;height:20px;border-radius:50%;background:${c.hex};cursor:pointer;border:2px solid ${point.color===c.hex?'#333':'transparent'};display:inline-block;margin:1px;flex-shrink:0"></div>`
+  ).join('');
+  point.marker.bindPopup(`
+    <div style="min-width:210px;font-family:system-ui,sans-serif">
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #ddd">${point.name}</div>
+
+      <div style="font-size:11px;color:#888;margin-bottom:3px;font-weight:600">NAZWA</div>
+      <div style="display:flex;gap:4px;margin-bottom:10px">
+        <input id="rename-${point.id}" type="text" value="${point.name}" style="flex:1;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box"/>
+        <button onclick="renamePoint(${point.id})" style="background:#01696f;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer;white-space:nowrap">Zapisz</button>
+      </div>
+
+      <div style="font-size:11px;color:#888;margin-bottom:3px;font-weight:600">WSPÓŁRZĘDNE</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:2px">Szerokość (lat)</div>
+          <input id="plat-${point.id}" type="number" step="0.000001" value="${point.lat}" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:2px">Długość (lon)</div>
+          <input id="plon-${point.id}" type="number" step="0.000001" value="${point.lng}" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box"/>
+        </div>
+      </div>
+      <button onclick="movePointToCoords(${point.id})" style="background:#01696f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;width:100%;margin-bottom:10px">Przenieś do współrzędnych</button>
+
+      <div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:600">KOLOR MARKERA</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:8px">${swatches}</div>
+
+      <p style="font-size:10px;color:#aaa;margin:0;text-align:center">Przeciągnij marker na mapie, by go przenieść</p>
+    </div>
+  `, { maxWidth: 240 });
+}
+
+function changePointColor(id, color) {
+  const p = points.find(pp => pp.id === id);
+  if (!p) return;
+  p.color = color;
+  p.marker.setIcon(makeIcon(color));
+  updateMarkerPopup(p);
+  p.marker.openPopup();
+  renderPoints();
+  showToast('Kolor zmieniony', 'success');
+}
+
+function renamePoint(id) {
+  const p = points.find(pp => pp.id === id);
+  if (!p) return;
+  const input = document.getElementById('rename-' + id);
+  if (!input) return;
+  const newName = input.value.trim();
+  if (!newName) return;
+  p.name = newName;
+  updateMarkerPopup(p);
+  p.marker.closePopup();
+  renderPoints();
+  renderRouteList();
+  showToast('Nazwa zmieniona na: ' + newName, 'success');
+}
+
+function movePointToCoords(id) {
+  const p = points.find(pp => pp.id === id);
+  if (!p) return;
+  const latEl = document.getElementById('plat-' + id);
+  const lonEl = document.getElementById('plon-' + id);
+  if (!latEl || !lonEl) return;
+  const lat = parseFloat(latEl.value);
+  const lng = parseFloat(lonEl.value);
+  if (isNaN(lat) || isNaN(lng)) { showToast('Nieprawidłowe współrzędne!', 'error'); return; }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { showToast('Współrzędne poza zakresem!', 'error'); return; }
+  p.lat = +lat.toFixed(6);
+  p.lng = +lng.toFixed(6);
+  p.marker.setLatLng([p.lat, p.lng]);
+  updateMarkerPopup(p);
+  p.marker.closePopup();
+  if (document.getElementById('autoZoomCheck') && document.getElementById('autoZoomCheck').checked) map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 10), { animate: true, duration: 0.8 });
+  setTimeout(() => p.marker.openPopup(), 900);
+  renderPoints();
+  renderRouteList();
+  if (routeLine && routeSelected.length >= 2) recalcRoute(false);
+  if (document.getElementById('areaResult') && document.getElementById('areaResult').style.display !== 'none' && routeSelected.length >= 3) recalcArea(false);
+  fetchElevation(point);
+  showToast('Punkt przeniesiony do: ' + p.lat + ', ' + p.lng, 'success');
+}
+
+function addPoint(name, lat, lng, color) {
+  const id = Date.now() + Math.random();
+  const marker = L.marker([lat, lng], { icon: makeIcon(color), draggable: true }).addTo(map);
+  const point = { id, name, lat, lng, color, marker };
+  points.push(point);
+  updateMarkerPopup(point);
+  // Live update during drag
+  marker.on('drag', function(e) {
+    const ll = e.target.getLatLng();
+    point.lat = +ll.lat.toFixed(6);
+    point.lng = +ll.lng.toFixed(6);
+    if (routeLine && routeSelected.length >= 2) recalcRoute(false);
+    const areaVisible = document.getElementById('areaResult') && document.getElementById('areaResult').style.display !== 'none';
+    if (areaVisible && routeSelected.includes(point.id) && routeSelected.length >= 3) recalcArea(false);
+  });
+
+  marker.on('dragend', function(e) {
+    const ll = e.target.getLatLng();
+    point.lat = +ll.lat.toFixed(6);
+    point.lng = +ll.lng.toFixed(6);
+    updateMarkerPopup(point);
+    renderPoints();
+    renderRouteList();
+    if (routeLine && routeSelected.length >= 2) recalcRoute(false);
+    const areaVisible = document.getElementById('areaResult') && document.getElementById('areaResult').style.display !== 'none';
+    if (areaVisible && routeSelected.includes(point.id) && routeSelected.length >= 3) recalcArea(false);
+    fetchElevation(point);
+    showToast('Pozycja zaktualizowana', 'success');
+  });
+  renderPoints();
+  renderRouteList();
+  // Fetch elevation
+  fetchElevation(point);
+  return point;
+}
+
+function fetchElevation(point) {
+  // Open-Meteo Elevation API — free, no key, CORS-enabled
+  fetch(`https://api.open-meteo.com/v1/elevation?latitude=${point.lat}&longitude=${point.lng}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.elevation && data.elevation.length > 0) {
+        const elev = data.elevation[0];
+        point.elevation = elev !== null ? Math.round(elev) : null;
+        updateMarkerPopup(point);
+        renderPoints();
+      }
+    })
+    .catch(() => { point.elevation = null; });
+}
+
+function removePoint(id) {
+  const idx = points.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  map.removeLayer(points[idx].marker);
+  points.splice(idx, 1);
+  routeSelected = routeSelected.filter(rid => rid !== id);
+  renderPoints();
+  renderRouteList();
+  showToast('Punkt usunięty', 'success');
+}
+
+function copyCoords(id) {
+  const p = points.find(pp => pp.id === id);
+  if (!p) return;
+  const txt = p.lat.toFixed(6) + ', ' + p.lng.toFixed(6);
+  navigator.clipboard.writeText(txt).then(() => showToast('Skopiowano: ' + txt, 'success'));
+}
+
+function flyTo(id) {
+  const p = points.find(pp => pp.id === id);
+  if (!p) return;
+  map.flyTo([p.lat, p.lng], 14, { animate: true, duration: 1 });
+  setTimeout(() => p.marker.openPopup(), 900);
+}
+
+// ============================================================
+// RENDER: LISTA PUNKTÓW
+// ============================================================
+function renderPoints() {
+  const list = document.getElementById('pointsList');
+  const empty = document.getElementById('emptyPoints');
+  document.getElementById('pointCount').textContent = points.length;
+  list.querySelectorAll('.point-item').forEach(e => e.remove());
+  empty.style.display = points.length === 0 ? 'flex' : 'none';
+  updateFresnelSelects();
+  points.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'point-item';
+    el.innerHTML = `
+      <div style="width:12px;height:12px;border-radius:50%;background:${p.color};flex-shrink:0;margin-top:3px"></div>
+      <div class="point-info">
+        <div class="point-name" title="${p.name}">${p.name}</div>
+        <div class="point-coords">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}${p.elevation !== undefined ? ' · ' + (p.elevation !== null ? p.elevation + ' m n.p.m.' : '—') : ''}</div>
+      </div>
+      <div class="point-actions">
+        <button class="icon-btn" title="Kopiuj współrzędne" onclick="copyCoords(${p.id})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button class="icon-btn" title="Przeleć / edytuj" onclick="flyTo(${p.id})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </button>
+        <button class="icon-btn delete" title="Usuń" onclick="removePoint(${p.id})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>`;
+    list.appendChild(el);
+  });
+}
+
+// ============================================================
+// RENDER: LISTA TRASY
+// ============================================================
+function renderRouteList() {
+  const container = document.getElementById('routeList');
+  const empty = document.getElementById('routeEmpty');
+  container.querySelectorAll('.route-row').forEach(e => e.remove());
+  empty.style.display = points.length === 0 ? 'flex' : 'none';
+  points.forEach(p => {
+    const isSelected = routeSelected.includes(p.id);
+    const order = routeSelected.indexOf(p.id);
+    const row = document.createElement('div');
+    row.className = 'route-row' + (isSelected ? ' selected' : '');
+    row.innerHTML = `
+      <input type="checkbox" ${isSelected ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--color-primary);cursor:pointer;flex-shrink:0">
+      <div style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0"></div>
+      <span style="flex:1;font-size:var(--text-sm);font-weight:500">${p.name}</span>
+      ${isSelected ? `<div class="route-order">${order+1}</div>` : ''}`;
+    const toggle = () => {
+      const idx = routeSelected.indexOf(p.id);
+      if (idx === -1) routeSelected.push(p.id);
+      else routeSelected.splice(idx, 1);
+      renderRouteList();
+    };
+    row.querySelector('input').addEventListener('change', toggle);
+    row.addEventListener('click', e => { if (e.target.tagName !== 'INPUT') toggle(); });
+    container.appendChild(row);
+  });
+}
+
+// ============================================================
+// ODLEGŁOŚCI
+// ============================================================
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const f1 = lat1*Math.PI/180, f2 = lat2*Math.PI/180;
+  const df = (lat2-lat1)*Math.PI/180, dl = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(df/2)**2 + Math.cos(f1)*Math.cos(f2)*Math.sin(dl/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function getUnit() { return document.getElementById('unitSelect') ? document.getElementById('unitSelect').value : 'auto'; }
+
+function formatDist(m) {
+  const u = getUnit();
+  if (u === 'm') return m.toFixed(2) + ' m';
+  if (u === 'km') return (m/1000).toFixed(2) + ' km';
+  if (m < 1000) return m.toFixed(2) + ' m';
+  return (m/1000).toFixed(2) + ' km';
+}
+
+// unit change -> recalc if route active
+document.addEventListener('DOMContentLoaded', () => {
+  const mapEl = document.getElementById('map');
+  mapEl.addEventListener('mouseenter', () => map.scrollWheelZoom.enable());
+  mapEl.addEventListener('mouseleave', () => map.scrollWheelZoom.disable());
+  const us = document.getElementById('unitSelect');
+  if (us) us.addEventListener('change', () => { if (routeLine && routeSelected.length >= 2) recalcRoute(false); });
+});
+
+function clearRouteLine() {
+  if (routeLine) { routeLine.eachLayer ? routeLine.eachLayer(l => map.removeLayer(l)) : map.removeLayer(routeLine); routeLine = null; }
+}
+
+function recalcRoute(fitBounds) {
+  const sel = routeSelected.map(id => points.find(p => p.id === id)).filter(Boolean);
+  if (sel.length < 2) return;
+  clearRouteLine();
+  const latlngs = sel.map(p => [p.lat, p.lng]);
+  const fg = L.featureGroup([
+    L.polyline(latlngs, { color: '#000', weight: 7, opacity: 0.3 }),
+    L.polyline(latlngs, { color: routeLabelColor, weight: 3.5, opacity: 1 })
+  ]).addTo(map);
+  let total = 0;
+  const segs = [];
+  for (let i = 1; i < sel.length; i++) {
+    const d = haversine(sel[i-1].lat, sel[i-1].lng, sel[i].lat, sel[i].lng);
+    total += d;
+    segs.push({ from: sel[i-1], to: sel[i], d });
+    const mid = [(sel[i-1].lat + sel[i].lat)/2, (sel[i-1].lng + sel[i].lng)/2];
+    L.marker(mid, { icon: L.divIcon({
+      className: '',
+      html: `<div style="background:${routeLabelColor};color:#111;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.4);display:inline-block">${formatDist(d)}</div>`,
+      iconSize: null,
+      iconAnchor: null
+    })}).addTo(fg);
+  }
+  routeLine = fg;
+  document.getElementById('routeTotalDist').textContent = formatDist(total);
+  document.getElementById('routeMeta').textContent = `${sel.length} punktów · ${segs.length} odcinków`;
+  const segDiv = document.getElementById('routeSegments');
+  segDiv.innerHTML = '';
+  segs.forEach((s, i) => {
+    segDiv.innerHTML += `<div class="dist-row"><div class="dist-route">${i+1}. ${s.from.name} → ${s.to.name}</div><div class="dist-val">${formatDist(s.d)}</div></div>`;
+  });
+  document.getElementById('routeResult').style.display = 'block';
+  if (fitBounds) map.fitBounds(latlngs, { padding: [60, 60] });
+}
+
+document.getElementById('calcRouteBtn').addEventListener('click', () => {
+  if (routeSelected.length < 2) { showToast('Zaznacz co najmniej 2 punkty!', 'error'); return; }
+  recalcRoute(false);
+  showToast('Trasa: ' + document.getElementById('routeTotalDist').textContent, 'success');
+});
+
+document.getElementById('selectAllRouteBtn').addEventListener('click', () => {
+  routeSelected = points.map(p => p.id);
+  renderRouteList();
+  showToast('Zaznaczono wszystkie punkty', 'success');
+});
+
+document.getElementById('clearRouteBtn').addEventListener('click', () => {
+  routeSelected = [];
+  clearRouteLine();
+  document.getElementById('routeResult').style.display = 'none';
+  renderRouteList();
+  showToast('Trasa wyczyszczona', 'success');
+});
+
+document.getElementById('clearAreaBtn').addEventListener('click', () => {
+  if (window._areaPolygon) { map.removeLayer(window._areaPolygon); window._areaPolygon = null; }
+  if (window._areaLabelMarker) { map.removeLayer(window._areaLabelMarker); window._areaLabelMarker = null; }
+  window._lastAreaM2 = undefined;
+  document.getElementById('areaResult').style.display = 'none';
+  showToast('Pole powierzchni wyczyszczone', 'success');
+});
+
+// ── POLE POWIERZCHNI ──
+function calcPolygonArea(pts) {
+  // Gauss shoelace na płaszczyźnie geograficznej → przybliżenie przez rzut
+  if (pts.length < 3) return 0;
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  // Use equirectangular projection relative to centroid
+  const lat0 = pts.reduce((s,p)=>s+p.lat,0)/pts.length;
+  const lon0 = pts.reduce((s,p)=>s+p.lng,0)/pts.length;
+  const cos = Math.cos(toRad(lat0));
+  const xy = pts.map(p => ({
+    x: R * toRad(p.lng - lon0) * cos,
+    y: R * toRad(p.lat - lat0)
+  }));
+  let area = 0;
+  for (let i = 0, n = xy.length; i < n; i++) {
+    const j = (i+1) % n;
+    area += xy[i].x * xy[j].y;
+    area -= xy[j].x * xy[i].y;
+  }
+  return Math.abs(area / 2);
+}
+
+function centroid(pts) {
+  return {
+    lat: pts.reduce((s,p)=>s+p.lat,0)/pts.length,
+    lng: pts.reduce((s,p)=>s+p.lng,0)/pts.length
+  };
+}
+
+function updateAreaLabel() {
+  if (window._areaLabelMarker) { map.removeLayer(window._areaLabelMarker); window._areaLabelMarker = null; }
+  // Check if label is enabled
+  const chk = document.getElementById('showAreaLabel');
+  if (!chk || !chk.checked) return;
+  if (!window._areaLabelText || !window._areaCentroid) return;
+  const textColor = areaLabelColor;
+  const stroke = (textColor === '#ffffff' || textColor === '#ffcc00' || textColor === '#34c759' || textColor === '#00bfff') ? '1px solid rgba(0,0,0,0.4)' : 'none';
+  window._areaLabelMarker = L.circleMarker([window._areaCentroid.lat, window._areaCentroid.lng], {
+    radius: 0, stroke: false, fill: false, interactive: false
+  }).addTo(map).bindTooltip(
+    `<span style="color:${textColor};font-size:14px;font-weight:800;white-space:nowrap;pointer-events:none;text-shadow:-1px -1px 0 rgba(0,0,0,0.5),1px -1px 0 rgba(0,0,0,0.5),-1px 1px 0 rgba(0,0,0,0.5),1px 1px 0 rgba(0,0,0,0.5)">${window._areaLabelText}</span>`,
+    { permanent: true, direction: 'center', className: 'area-tooltip', opacity: 1 }
+  ).openTooltip();
+}
+
+function recalcArea(fitBounds) {
+  const sel = routeSelected.map(id => points.find(p => p.id === id)).filter(Boolean);
+  if (sel.length < 3) return;
+  const area = calcPolygonArea(sel);
+  const areaKm = area / 1e6;
+  const areaHa = area / 1e4;
+  window._lastAreaM2 = area;
+  const unitSel = document.getElementById('areaUnitSelect');
+  const unit = unitSel ? unitSel.value : 'm2';
+  let mainVal, secVal;
+  if (unit === 'km2' || (unit === 'auto' && area >= 1e6)) {
+    mainVal = areaKm.toFixed(4) + ' km²';
+    secVal  = area.toLocaleString('pl-PL', {maximumFractionDigits:0}) + ' m²';
+  } else {
+    mainVal = area.toLocaleString('pl-PL', {maximumFractionDigits:0}) + ' m²';
+    secVal  = areaKm.toFixed(4) + ' km²';
+  }
+  document.getElementById('areaM2').textContent = mainVal;
+  document.getElementById('areaUnit').textContent = 'pole powierzchni wielokąta';
+  document.getElementById('areaKm2').textContent = secVal;
+  document.getElementById('areaResult').style.display = 'block';
+  const latlngs = sel.map(p => [p.lat, p.lng]);
+  if (window._areaPolygon) map.removeLayer(window._areaPolygon);
+  window._areaPolygon = L.polygon(latlngs, { color: areaColor, fillColor: areaColor, fillOpacity: 0.15, weight: 2, dashArray: '6 4' }).addTo(map);
+  window._areaCentroid = centroid(sel);
+  const _unitSelLbl = document.getElementById('areaUnitSelect');
+  const _unitLbl = _unitSelLbl ? _unitSelLbl.value : 'm2';
+  window._areaLabelText = (_unitLbl === 'km2' || (_unitLbl === 'auto' && area >= 1e6))
+    ? areaKm.toFixed(4) + ' km²'
+    : area.toLocaleString('pl-PL', {maximumFractionDigits:0}) + ' m²';
+  updateAreaLabel();
+  if (fitBounds) map.fitBounds(window._areaPolygon.getBounds(), { padding: [40,40] });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const chk = document.getElementById('showAreaLabel');
+  if (chk) chk.addEventListener('change', () => updateAreaLabel());
+  const areaUnitSel = document.getElementById('areaUnitSelect');
+  if (areaUnitSel) areaUnitSel.addEventListener('change', () => {
+    if (window._lastAreaM2 !== undefined) recalcArea(false);
+  });
+});
+
+document.getElementById('calcAreaBtn').addEventListener('click', () => {
+  if (routeSelected.length < 3) { showToast('Zaznacz co najmniej 3 punkty w sekcji trasy!', 'error'); return; }
+  recalcArea(false);
+  const km = document.getElementById('areaKm2').textContent;
+  showToast('Pole: ' + km, 'success');
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  document.getElementById('allDistances').innerHTML = '';
+  showToast('Odległości wyczyszczone', 'success');
+});
+
+document.getElementById('calcAllBtn').addEventListener('click', () => {
+  if (points.length < 2) { showToast('Potrzebujesz co najmniej 2 punktów!', 'error'); return; }
+  const pairs = [];
+  for (let i = 0; i < points.length; i++)
+    for (let j = i+1; j < points.length; j++)
+      pairs.push([points[i], points[j]]);
+  pairs.sort((a, b) => haversine(a[0].lat,a[0].lng,a[1].lat,a[1].lng) - haversine(b[0].lat,b[0].lng,b[1].lat,b[1].lng));
+  const container = document.getElementById('allDistances');
+  container.innerHTML = '';
+  pairs.slice(0, 30).forEach(([a, b]) => {
+    const d = haversine(a.lat, a.lng, b.lat, b.lng);
+    container.innerHTML += `<div class="dist-row"><div class="dist-route">${a.name} → ${b.name}</div><div class="dist-val">${formatDist(d)}</div></div>`;
+  });
+});
+
+// ============================================================
+// DODAJ PUNKT (PRZYCISK)
+// ============================================================
+document.getElementById('addPointBtn').addEventListener('click', () => {
+  const name = document.getElementById('pointName').value.trim() || 'Punkt ' + (points.length + 1);
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lng = parseFloat(document.getElementById('lon').value);
+  if (isNaN(lat) || isNaN(lng)) { showToast('Wprowadź poprawne współrzędne!', 'error'); return; }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) { showToast('Współrzędne poza zakresem!', 'error'); return; }
+  addPoint(name, lat, lng, markerColor);
+  document.getElementById('pointName').value = '';
+  document.getElementById('lat').value = '';
+  document.getElementById('lon').value = '';
+  if (document.getElementById('autoZoomCheck') && document.getElementById('autoZoomCheck').checked) {
+    map.flyTo([lat, lng], Math.max(map.getZoom(), 10), { animate: true, duration: 1 });
+  }
+  showToast('Dodano: ' + name, 'success');
+  switchTab('points');
+});
+
+// ============================================================
+// KLIK NA MAPIE — WSPÓŁRZĘDNE LUB ETYKIETA
+// ============================================================
+// ── CURSOR INFO ──
+let _elevDebounce = null;
+let _lastElevLat = null, _lastElevLng = null;
+
+map.on('mousemove', function(e) {
+  const lat = e.latlng.lat.toFixed(6);
+  const lng = e.latlng.lng.toFixed(6);
+  document.getElementById('ciLat').textContent = lat;
+  document.getElementById('ciLng').textContent = lng;
+
+  // Debounce elevation fetch — only after 600ms of no movement
+  clearTimeout(_elevDebounce);
+  _elevDebounce = setTimeout(() => {
+    const flat = parseFloat(lat), flng = parseFloat(lng);
+    if (flat === _lastElevLat && flng === _lastElevLng) return;
+    _lastElevLat = flat; _lastElevLng = flng;
+    document.getElementById('ciElev').textContent = '…';
+    fetch(`https://api.open-meteo.com/v1/elevation?latitude=${flat}&longitude=${flng}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.elevation && data.elevation.length > 0) {
+          const el = data.elevation[0];
+          document.getElementById('ciElev').textContent = el !== null ? Math.round(el) + ' m' : '—';
+        }
+      })
+      .catch(() => { document.getElementById('ciElev').textContent = '—'; });
+  }, 600);
+});
+
+map.on('mouseout', function() {
+  document.getElementById('ciLat').textContent = '—';
+  document.getElementById('ciLng').textContent = '—';
+  document.getElementById('ciElev').textContent = '—';
+  clearTimeout(_elevDebounce);
+});
+
+map.on('click', function(e) {
+  if (labelMode) {
+    labelMode = false;
+    map.getContainer().style.cursor = '';
+    document.getElementById('labelHint').style.color = '';
+    const text = document.getElementById('labelText').value.trim();
+    if (!text) return;
+    const font = document.getElementById('labelFont').value;
+    const size = document.getElementById('labelSize').value;
+    const color = labelColor;
+    const icon = buildLabelIcon({ text, font, size, color });
+    const lid = Date.now() + Math.random();
+    const ldata = { lid, text, font, size, color };
+    const m = L.marker([e.latlng.lat, e.latlng.lng], { icon, draggable: true }).addTo(map);
+    m._lid = lid;
+    m._ldata = ldata;
+    bindLabelPopup(m, ldata);
+    labelMarkers.push(m);
+    document.getElementById('labelText').value = '';
+    showToast('Etykieta "' + text + '" dodana', 'success');
+    return;
+  }
+  // Wypełnij pola współrzędnych
+  const lat = +e.latlng.lat.toFixed(6);
+  const lng = +e.latlng.lng.toFixed(6);
+  document.getElementById('lat').value = lat;
+  document.getElementById('lon').value = lng;
+  if (!document.getElementById('pointName').value) {
+    document.getElementById('pointName').value = 'Punkt ' + (points.length + 1);
+  }
+  // Kopiuj do schowka (jeśli checkbox włączony)
+  const coordStr = lat + ', ' + lng;
+  const autoCopy = document.getElementById('autoCopyCheck') && document.getElementById('autoCopyCheck').checked;
+  if (autoCopy) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(coordStr).then(() => {
+        showToast('📋 Skopiowano: ' + coordStr, 'success');
+      }).catch(() => {
+        showToast('Współrzędne: ' + coordStr, 'success');
+      });
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = coordStr; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); showToast('📋 Skopiowano: ' + coordStr, 'success'); }
+      catch { showToast('Współrzędne: ' + coordStr, 'success'); }
+      document.body.removeChild(ta);
+    }
+  } else {
+    showToast('Współrzędne: ' + coordStr, 'success');
+  }
+  // Auto-switch to "Dodaj punkt" tab
+  if (document.getElementById('autoTabCheck') && document.getElementById('autoTabCheck').checked) {
+    switchTab('add');
+  }
+});
+
+// ============================================================
+// ETYKIETY
+// ============================================================
+document.getElementById('addLabelBtn').addEventListener('click', () => {
+  const text = document.getElementById('labelText').value.trim();
+  if (!text) { showToast('Wpisz treść etykiety!', 'error'); return; }
+  labelMode = true;
+  map.getContainer().style.cursor = 'crosshair';
+  document.getElementById('labelHint').style.color = 'var(--color-primary)';
+  showToast('Kliknij na mapie, aby umieścić etykietę', 'success');
+});
+
+function buildLabelIcon(d) {
+  const stroke = (d.color === '#ffffff' || d.color === '#ffcc00') ? '#222' : '#fff';
+  return L.divIcon({
+    className: '',
+    html: `<span style="font-family:${d.font};font-size:${d.size}px;color:${d.color};font-weight:700;white-space:nowrap;text-shadow:-1px -1px 0 ${stroke},1px -1px 0 ${stroke},-1px 1px 0 ${stroke},1px 1px 0 ${stroke};cursor:pointer">${d.text}</span>`,
+    iconAnchor: [0, 0]
+  });
+}
+
+function bindLabelPopup(m, d) {
+  m.unbindPopup();
+  const colorSwatches = COLORS.map(c =>
+    `<div onclick="changeLabelColor(${d.lid},'${c.hex}')" title="${c.label}" style="width:20px;height:20px;border-radius:50%;background:${c.hex};cursor:pointer;border:2px solid ${d.color===c.hex?'#333':'transparent'};display:inline-block;margin:1px"></div>`
+  ).join('');
+  const sizeOpts = [12,14,16,20,24,32,40].map(s => `<option value="${s}" ${+d.size===s?'selected':''}>${s}px</option>`).join('');
+  const fonts = ['Arial, sans-serif','Georgia, serif',"'Courier New', monospace",'Impact, sans-serif','Verdana, sans-serif',"'Trebuchet MS', sans-serif"];
+  const fontNames = ['Arial','Georgia','Courier New','Impact','Verdana','Trebuchet'];
+  const fontOpts = fonts.map((f,i) => `<option value="${f}" ${d.font===f?'selected':''}>${fontNames[i]}</option>`).join('');
+  m.bindPopup(`
+    <div style="min-width:210px;font-family:system-ui,sans-serif">
+      <div style="font-size:11px;color:#888;margin-bottom:3px;font-weight:600">TREŚĆ</div>
+      <input id="ledit-${d.lid}" type="text" value="${d.text}" style="width:100%;padding:4px 6px;border:1px solid #ccc;border-radius:4px;font-size:12px;box-sizing:border-box;margin-bottom:6px"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px">
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:2px">Czcionka</div>
+          <select id="lfont-${d.lid}" style="width:100%;padding:3px 4px;font-size:11px;border:1px solid #ccc;border-radius:4px">${fontOpts}</select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:2px">Rozmiar</div>
+          <select id="lsize-${d.lid}" style="width:100%;padding:3px 4px;font-size:11px;border:1px solid #ccc;border-radius:4px">${sizeOpts}</select>
+        </div>
+      </div>
+      <button onclick="updateLabel(${d.lid})" style="background:#01696f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;width:100%;margin-bottom:8px">Zapisz zmiany</button>
+      <div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:600">KOLOR TEKSTU</div>
+      <div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:8px">${colorSwatches}</div>
+      <button onclick="removeLabelById(${d.lid})" style="background:none;border:1px solid #ccc;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;color:#c00;width:100%">Usuń etykietę</button>
+    </div>
+  `, {maxWidth: 240});
+}
+
+function updateLabel(lid) {
+  const m = labelMarkers.find(mm => mm._lid === lid);
+  if (!m) return;
+  const d = m._ldata;
+  const input = document.getElementById('ledit-' + lid);
+  const sizeEl = document.getElementById('lsize-' + lid);
+  const fontEl = document.getElementById('lfont-' + lid);
+  if (input) d.text = input.value.trim() || d.text;
+  if (sizeEl) d.size = sizeEl.value;
+  if (fontEl) d.font = fontEl.value;
+  m.setIcon(buildLabelIcon(d));
+  bindLabelPopup(m, d);
+  m.openPopup();
+  showToast('Etykieta zaktualizowana', 'success');
+}
+
+function changeLabelColor(lid, color) {
+  const m = labelMarkers.find(mm => mm._lid === lid);
+  if (!m) return;
+  m._ldata.color = color;
+  m.setIcon(buildLabelIcon(m._ldata));
+  bindLabelPopup(m, m._ldata);
+  m.openPopup();
+  showToast('Kolor etykiety zmieniony', 'success');
+}
+
+function removeLabelById(lid) {
+  const idx = labelMarkers.findIndex(m => m._lid === lid);
+  if (idx !== -1) { map.removeLayer(labelMarkers[idx]); labelMarkers.splice(idx, 1); }
+  map.closePopup();
+  showToast('Etykieta usunięta', 'success');
+}
+
+// ============================================================
+// WYCZYŚĆ WSZYSTKO
+// ============================================================
+document.getElementById('clearMapBtn').addEventListener('click', () => {
+  if (!confirm('Usunąć wszystkie punkty, kształty i etykiety?')) return;
+  points.forEach(p => map.removeLayer(p.marker));
+  points = [];
+  routeSelected = [];
+  drawnItems.clearLayers();
+  clearRouteLine();
+  if (window._areaPolygon) { map.removeLayer(window._areaPolygon); window._areaPolygon = null; }
+  if (window._areaLabelMarker) { map.removeLayer(window._areaLabelMarker); window._areaLabelMarker = null; }
+  document.getElementById('areaResult').style.display = 'none';
+  labelMarkers.forEach(m => map.removeLayer(m));
+  labelMarkers.length = 0;
+  document.getElementById('routeResult').style.display = 'none';
+  document.getElementById('allDistances').innerHTML = '';
+  renderPoints();
+  renderRouteList();
+  showToast('Mapa wyczyszczona', 'success');
+});
+
+// ============================================================
+// ZAKŁADKI
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+});
+
+// ============================================================
+// TRYB CIEMNY
+// ============================================================
+(function() {
+  const btn = document.getElementById('themeToggle');
+  const root = document.documentElement;
+  let dark = matchMedia('(prefers-color-scheme:dark)').matches;
+  root.setAttribute('data-theme', dark ? 'dark' : 'light');
+  btn.addEventListener('click', () => {
+    dark = !dark;
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    btn.innerHTML = dark
+      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  });
+})();
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, type) {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  const icon = type === 'success'
+    ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
+    : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+  t.innerHTML = icon + msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.animation = 'toastOut .3s ease forwards'; setTimeout(() => t.remove(), 300); }, 2800);
+}
+
+// ============================================================
+// USTAWIENIA — localStorage
+// ============================================================
+const SETTINGS_KEY = 'geomapper_settings';
+
+function saveSettings() {
+  const s = {
+    markerColor,
+    shapeColor,
+    labelColor,
+    areaColor,
+    areaLabelColor,
+    routeLabelColor,
+    autoZoomRoute: document.getElementById('autoZoomRouteCheck') ? document.getElementById('autoZoomRouteCheck').checked : true,
+    areaUnit: document.getElementById('areaUnitSelect') ? document.getElementById('areaUnitSelect').value : 'm2',
+    labelFont: document.getElementById('labelFont').value,
+    labelSize: document.getElementById('labelSize').value,
+    autoCopy: document.getElementById('autoCopyCheck').checked,
+    autoZoom: document.getElementById('autoZoomCheck').checked,
+    autoTab: document.getElementById('autoTabCheck').checked,
+    showAreaLabel: document.getElementById('showAreaLabel').checked,
+    darkTheme: document.documentElement.getAttribute('data-theme') === 'dark'
+  };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    // Colors — activate swatches
+    if (s.markerColor) { markerColor = s.markerColor; activateSwatch('markerColorPicker', s.markerColor); }
+    if (s.shapeColor)  { shapeColor  = s.shapeColor;  activateSwatch('shapeColorPicker',  s.shapeColor);  rebuildDrawControl(); }
+    if (s.labelColor)  { labelColor  = s.labelColor;  activateSwatch('labelColorPicker',  s.labelColor);  }
+    if (s.areaColor)   { areaColor   = s.areaColor;   activateSwatch('areaColorPicker',   s.areaColor);   }
+    if (s.areaLabelColor) { areaLabelColor = s.areaLabelColor; activateSwatch('areaLabelColorPicker', s.areaLabelColor); }
+    if (s.routeLabelColor) { routeLabelColor = s.routeLabelColor; activateSwatch('routeLabelColorPicker', s.routeLabelColor); }
+    if (s.autoZoomRoute !== undefined && document.getElementById('autoZoomRouteCheck')) document.getElementById('autoZoomRouteCheck').checked = s.autoZoomRoute;
+    if (s.areaUnit && document.getElementById('areaUnitSelect')) document.getElementById('areaUnitSelect').value = s.areaUnit;
+    if (s.labelFont) document.getElementById('labelFont').value = s.labelFont;
+    if (s.labelSize) document.getElementById('labelSize').value = s.labelSize;
+    if (s.autoCopy !== undefined) document.getElementById('autoCopyCheck').checked = s.autoCopy;
+    if (s.autoZoom !== undefined) document.getElementById('autoZoomCheck').checked = s.autoZoom;
+    if (s.autoTab  !== undefined) document.getElementById('autoTabCheck').checked  = s.autoTab;
+    if (s.showAreaLabel !== undefined) document.getElementById('showAreaLabel').checked = s.showAreaLabel;
+    if (s.darkTheme !== undefined) {
+      document.documentElement.setAttribute('data-theme', s.darkTheme ? 'dark' : 'light');
+    }
+  } catch(e) {}
+}
+
+function activateSwatch(pickerId, color) {
+  const container = document.getElementById(pickerId);
+  if (!container) return;
+  container.querySelectorAll('.color-swatch').forEach(sw => {
+    sw.classList.toggle('selected', sw.dataset && sw.dataset.color === color);
+  });
+}
+
+// Auto-save on any color/checkbox change
+['autoCopyCheck','autoTabCheck','showAreaLabel','autoZoomCheck'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', saveSettings);
+});
+['labelFont','labelSize'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', saveSettings);
+});
+
+// Patch buildPicker to also save on change
+const _origBuildPicker = buildPicker;
+// Save after every color pick — patch all pickers
+document.querySelectorAll('.color-row').forEach(row => {
+  row.addEventListener('click', () => setTimeout(saveSettings, 50));
+});
+
+// Cursor info toggle
+document.getElementById('cursorInfoToggle').addEventListener('click', function() {
+  const panel = document.getElementById('cursorInfo');
+  const hidden = panel.classList.toggle('hidden');
+  this.textContent = hidden ? 'pokaż ▼' : 'ukryj ▲';
+});
+
+// Load on startup
+loadSettings();
+
+
+// ============================================================
+// EKSPORT JPG / PDF
+// ============================================================
+// ── EXPORT STATE ──
+let exportSelectMode = false;
+let exportStartPx = null;    // pixel coords on map container
+let exportRect = null;       // overlay div showing selection
+
+function saveCanvasAs(canvas, format, date, cssW, cssH) {
+  const pdfW = cssW || canvas.width;
+  const pdfH = cssH || canvas.height;
+  if (format === 'jpg') {
+    canvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.download = 'geomapper_' + date + '.jpg';
+      a.href = URL.createObjectURL(blob);
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('JPG zapisany!', 'success');
+    }, 'image/jpeg', 1.0);
+  } else {
+    const { jsPDF } = window.jspdf;
+    const orientation = pdfW > pdfH ? 'l' : 'p';
+    // Use mm units + A4-like scaling for sharp PDF
+    const mmW = pdfW * 0.264583;
+    const mmH = pdfH * 0.264583;
+    const pdf = new jsPDF({ orientation, unit: 'mm', format: [mmW, mmH] });
+    // PNG = lossless, no resampling artifacts
+    const pngData = canvas.toDataURL('image/png');
+    pdf.addImage(pngData, 'PNG', 0, 0, mmW, mmH, '', 'NONE');
+    pdf.save('geomapper_' + date + '.pdf');
+    showToast('PDF zapisany!', 'success');
+  }
+}
+
+const EXPORT_SCALE = 4; // wysoka rozdzielczość dla PDF
+
+function captureMap(mapEl, scale) {
+  const s = scale || EXPORT_SCALE;
+  const w = mapEl.offsetWidth;
+  const h = mapEl.offsetHeight;
+  return domtoimage.toPng(mapEl, {
+    width:  w * s,
+    height: h * s,
+    style: { transform: 'scale(' + s + ')', transformOrigin: 'top left' },
+    filter: el => !(el.classList && el.classList.contains('leaflet-control-container'))
+  }).then(dataUrl => {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width  = w * s;
+        c.height = h * s;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c);
+      };
+      img.src = dataUrl;
+    });
+  });
+}
+
+function captureAndCrop(x, y, w, h, format) {
+  const mapEl = document.getElementById('map');
+  const date = new Date().toISOString().slice(0, 10);
+  showToast('Generowanie ' + format.toUpperCase() + '…', 'success');
+  captureMap(mapEl, EXPORT_SCALE).then(fullCanvas => {
+    const s = fullCanvas.width / mapEl.offsetWidth;
+    const cx = Math.round(x * s);
+    const cy = Math.round(y * s);
+    const cw = Math.round(w * s);
+    const ch = Math.round(h * s);
+    const cropped = document.createElement('canvas');
+    cropped.width  = cw;
+    cropped.height = ch;
+    cropped.getContext('2d').drawImage(fullCanvas, cx, cy, cw, ch, 0, 0, cw, ch);
+    saveCanvasAs(cropped, format, date, w, h);
+  }).catch(e => showToast('Błąd eksportu: ' + e, 'error'));
+}
+
+function doExport(format, boundsToFit) {
+  const date = new Date().toISOString().slice(0, 10);
+  const mapEl = document.getElementById('map');
+  showToast('Generowanie ' + format.toUpperCase() + '…', 'success');
+
+  function capture() {
+    // Force Leaflet to reset ALL pane transforms to translate(0,0)
+    // by calling setView — this is the only reliable way to zero out internal pan offset
+    map.setView(map.getCenter(), map.getZoom(), { animate: false, reset: true });
+    setTimeout(() => {
+      captureMap(mapEl, EXPORT_SCALE).then(canvas => {
+        saveCanvasAs(canvas, format, date, mapEl.offsetWidth, mapEl.offsetHeight);
+      }).catch(e => showToast('Błąd eksportu: ' + e, 'error'));
+    }, 500);
+  }
+
+  if (boundsToFit) {
+    map.once('moveend', () => setTimeout(capture, 400));
+    map.fitBounds(boundsToFit, { animate: false, padding: [40, 40] });
+  } else {
+    capture();
+  }
+}
+
+function exportMap(format) {
+  const mode = document.querySelector('input[name="exportMode"]:checked').value;
+  if (mode === 'auto') {
+    doExport(format, null);
+  } else if (mode === 'current') {
+    doExport(format, null);
+  } else if (mode === 'manual') {
+    startExportSelect(format);
+  }
+}
+
+// ── MANUAL SELECTION — pixel-based overlay ──
+function startExportSelect(format) {
+  if (exportRect) { exportRect.remove(); exportRect = null; }
+  exportSelectMode = true;
+  exportStartPx = null;
+  map._exportFormat = format;
+  map.dragging.disable();
+  map.getContainer().style.cursor = 'crosshair';
+  showToast('Kliknij i przeciągnij prostokąt na mapie', 'success');
+
+  // Create overlay div on top of map to capture raw mouse events
+  const overlay = document.createElement('div');
+  overlay.id = 'exportOverlay';
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:9999;cursor:crosshair;';
+  document.getElementById('map').appendChild(overlay);
+
+  // Selection box
+  const box = document.createElement('div');
+  box.style.cssText = 'position:absolute;border:2px dashed #ff3b30;background:rgba(255,59,48,0.08);pointer-events:none;display:none;';
+  overlay.appendChild(box);
+
+  let startX, startY;
+
+  overlay.addEventListener('mousedown', function(e) {
+    const rect = overlay.getBoundingClientRect();
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    box.style.left   = startX + 'px';
+    box.style.top    = startY + 'px';
+    box.style.width  = '0';
+    box.style.height = '0';
+    box.style.display = 'block';
+    e.preventDefault();
+  });
+
+  overlay.addEventListener('mousemove', function(e) {
+    if (!box || box.style.display === 'none') return;
+    const rect = overlay.getBoundingClientRect();
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
+    const x = Math.min(startX, curX);
+    const y = Math.min(startY, curY);
+    const w = Math.abs(curX - startX);
+    const h = Math.abs(curY - startY);
+    box.style.left   = x + 'px';
+    box.style.top    = y + 'px';
+    box.style.width  = w + 'px';
+    box.style.height = h + 'px';
+    e.preventDefault();
+  });
+
+  overlay.addEventListener('mouseup', function(e) {
+    const rect = overlay.getBoundingClientRect();
+    const curX = e.clientX - rect.left;
+    const curY = e.clientY - rect.top;
+    const x = Math.min(startX, curX);
+    const y = Math.min(startY, curY);
+    const w = Math.abs(curX - startX);
+    const h = Math.abs(curY - startY);
+
+    // Remove overlay
+    overlay.remove();
+    map.dragging.enable();
+    map.getContainer().style.cursor = '';
+    exportSelectMode = false;
+
+    if (w < 10 || h < 10) { showToast('Zaznacz większy obszar!', 'error'); return; }
+
+    captureAndCrop(x, y, w, h, map._exportFormat);
+  });
+}
+
+
+document.getElementById('exportJpgBtn').addEventListener('click', () => exportMap('jpg'));
+document.getElementById('exportPdfBtn').addEventListener('click', () => exportMap('pdf'));
+
+// ============================================================
+// ZAPIS / ODCZYT PROJEKTU
+// ============================================================
+document.getElementById('saveProjectBtn').addEventListener('click', () => {
+  const project = {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    mapCenter: map.getCenter(),
+    mapZoom: map.getZoom(),
+    points: points.map(p => ({ name: p.name, lat: p.lat, lng: p.lng, color: p.color, elevation: p.elevation })),
+    labels: labelMarkers.map(m => ({
+      lat: m.getLatLng().lat, lng: m.getLatLng().lng,
+      text: m._ldata.text, font: m._ldata.font, size: m._ldata.size, color: m._ldata.color
+    })),
+    settings: {
+      markerColor, shapeColor, labelColor, areaColor, areaLabelColor,
+      labelFont: document.getElementById('labelFont').value,
+      labelSize: document.getElementById('labelSize').value,
+      autoCopy: document.getElementById('autoCopyCheck').checked,
+    autoZoom: document.getElementById('autoZoomCheck').checked,
+      autoTab: document.getElementById('autoTabCheck').checked,
+      showAreaLabel: document.getElementById('showAreaLabel').checked,
+      routeSelected
+    }
+  };
+  const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.download = 'geomapper_projekt_' + new Date().toISOString().slice(0,10) + '.json';
+  a.href = URL.createObjectURL(blob);
+  a.click();
+  showToast('Projekt zapisany!', 'success');
+});
+
+document.getElementById('loadProjectBtn').addEventListener('click', () => {
+  document.getElementById('loadProjectInput').click();
+});
+
+document.getElementById('loadProjectInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const project = JSON.parse(ev.target.result);
+      if (!project.version) throw new Error('Nieprawidłowy plik projektu');
+      // Clear current
+      points.forEach(p => map.removeLayer(p.marker));
+      points.length = 0;
+      labelMarkers.forEach(m => map.removeLayer(m));
+      labelMarkers.length = 0;
+      drawnItems.clearLayers();
+      clearRouteLine();
+      if (window._areaPolygon) { map.removeLayer(window._areaPolygon); window._areaPolygon = null; }
+      if (window._areaLabelMarker) { map.removeLayer(window._areaLabelMarker); window._areaLabelMarker = null; }
+      document.getElementById('routeResult').style.display = 'none';
+      document.getElementById('areaResult').style.display = 'none';
+      // Restore settings
+      if (project.settings) {
+        const s = project.settings;
+        if (s.markerColor) { markerColor = s.markerColor; activateSwatch('markerColorPicker', s.markerColor); }
+        if (s.shapeColor)  { shapeColor  = s.shapeColor;  activateSwatch('shapeColorPicker', s.shapeColor); rebuildDrawControl(); }
+        if (s.labelColor)  { labelColor  = s.labelColor;  activateSwatch('labelColorPicker', s.labelColor); }
+        if (s.areaColor)   { areaColor   = s.areaColor;   activateSwatch('areaColorPicker', s.areaColor); }
+        if (s.areaLabelColor) { areaLabelColor = s.areaLabelColor; activateSwatch('areaLabelColorPicker', s.areaLabelColor); }
+        if (s.labelFont) document.getElementById('labelFont').value = s.labelFont;
+        if (s.labelSize) document.getElementById('labelSize').value = s.labelSize;
+        if (s.autoCopy !== undefined) document.getElementById('autoCopyCheck').checked = s.autoCopy;
+    if (s.autoZoom !== undefined) document.getElementById('autoZoomCheck').checked = s.autoZoom;
+        if (s.autoTab  !== undefined) document.getElementById('autoTabCheck').checked  = s.autoTab;
+        if (s.showAreaLabel !== undefined) document.getElementById('showAreaLabel').checked = s.showAreaLabel;
+        routeSelected = s.routeSelected || [];
+      }
+      // Restore points
+      (project.points || []).forEach(p => {
+        const pt = addPoint(p.name, p.lat, p.lng, p.color);
+        if (p.elevation !== undefined) { pt.elevation = p.elevation; updateMarkerPopup(pt); }
+      });
+      // Restore labels
+      (project.labels || []).forEach(l => {
+        const ldata = { lid: Date.now() + Math.random(), text: l.text, font: l.font, size: l.size, color: l.color };
+        const icon = buildLabelIcon(ldata);
+        const m = L.marker([l.lat, l.lng], { icon, draggable: true }).addTo(map);
+        m._lid = ldata.lid; m._ldata = ldata;
+        bindLabelPopup(m, ldata);
+        labelMarkers.push(m);
+      });
+      // Restore map view
+      if (project.mapCenter) map.setView([project.mapCenter.lat, project.mapCenter.lng], project.mapZoom || 6);
+      renderPoints();
+      renderRouteList();
+      showToast('Projekt wczytany: ' + (project.points||[]).length + ' punktów', 'success');
+    } catch(err) {
+      showToast('Błąd wczytywania: ' + err.message, 'error');
+    }
+    this.value = '';
+  };
+  reader.readAsText(file);
+});
+
+// ═══════════════════════════════════════════════
+// FRESNEL ZONE
+// ═══════════════════════════════════════════════
+
+function updateFresnelSelects() {
+  const selA = document.getElementById('fresnelPointA');
+  const selB = document.getElementById('fresnelPointB');
+  if (!selA || !selB) return;
+  const valA = selA.value, valB = selB.value;
+  selA.innerHTML = '<option value="">— wybierz punkt —</option>';
+  selB.innerHTML = '<option value="">— wybierz punkt —</option>';
+  points.forEach(p => {
+    selA.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+    selB.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+  });
+  selA.value = valA;
+  selB.value = valB;
+}
+
+async function fetchElevations(latlngs) {
+  // open-meteo — CORS otwarty, działa z file://, max 100 pkt/req
+  const CHUNK = 100;
+  let out = [];
+  for (let i = 0; i < latlngs.length; i += CHUNK) {
+    const slice = latlngs.slice(i, i + CHUNK);
+    const lats  = slice.map(ll => ll[0].toFixed(6)).join(',');
+    const lngs  = slice.map(ll => ll[1].toFixed(6)).join(',');
+    const url   = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`;
+    const res   = await fetch(url);
+    if (res.status === 429) {
+      await new Promise(r => setTimeout(r, 1500));
+      const res2 = await fetch(url);
+      if (!res2.ok) throw new Error('HTTP ' + res2.status);
+      const d2 = await res2.json();
+      out = out.concat(d2.elevation);
+    } else {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (!data.elevation) throw new Error('Brak danych wysokości');
+      out = out.concat(data.elevation);
+    }
+    if (i + CHUNK < latlngs.length) await new Promise(r => setTimeout(r, 300));
+  }
+  return out;
+}
+
+document.getElementById('calcFresnelBtn').addEventListener('click', async function() {
+  try {
+  const idA = document.getElementById('fresnelPointA').value;
+  const idB = document.getElementById('fresnelPointB').value;
+  if (!idA || !idB || idA === idB) { showToast('Wybierz dwa różne punkty!', 'error'); return; }
+  const pA = points.find(p => String(p.id) === idA);
+  const pB = points.find(p => String(p.id) === idB);
+  if (!pA || !pB) return;
+
+  const freqVal  = parseFloat(document.getElementById('fresnelFreq').value) || 2400;
+  const freqUnit = document.getElementById('fresnelFreqUnit').value;
+  const freqHz   = freqUnit === 'GHz' ? freqVal * 1e9 : freqVal * 1e6;
+  const lambda   = 3e8 / freqHz;
+
+  const antHa   = parseFloat(document.getElementById('fresnelHa').value) || 0;
+  const antHb   = parseFloat(document.getElementById('fresnelHb').value) || 0;
+  const gainA   = parseFloat(document.getElementById('fresnelGainA').value) || 0;
+  const gainB   = parseFloat(document.getElementById('fresnelGainB').value) || 0;
+  const txA     = parseFloat(document.getElementById('fresnelTxA').value) || 0;
+  const txB     = parseFloat(document.getElementById('fresnelTxB').value) || 0;
+  const cableA  = parseFloat(document.getElementById('fresnelCableA').value) || 0;
+  const cableB  = parseFloat(document.getElementById('fresnelCableB').value) || 0;
+  const nf      = parseFloat(document.getElementById('fresnelNF').value) || 5;
+  const snrTgt  = parseFloat(document.getElementById('fresnelSNR').value) || 40;
+
+  const N = 200;
+  const totalDist = haversine(pA.lat, pA.lng, pB.lat, pB.lng);
+
+  showToast('Pobieranie profilu terenu…', 'success');
+
+  const samples = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    samples.push([pA.lat + (pB.lat - pA.lat) * t, pA.lng + (pB.lng - pA.lng) * t]);
+  }
+
+  let elevations;
+  try {
+    elevations = await fetchElevations(samples);
+  } catch(e) {
+    showToast('Błąd API: ' + e.message, 'error');
+    return;
+  }
+
+  // Endpoint ground elevations
+  const groundA = elevations[0];
+  const groundB = elevations[N];
+  // Antenna tip heights (above sea level)
+  const hA = groundA + antHa;
+  const hB = groundB + antHb;
+
+  // Earth radius for bulge correction (Mimosa uses effective Earth radius k=4/3)
+  const Re = 6371000 * (4/3);
+
+  const distArr = [], terrainArr = [], losArr = [], f1TopArr = [], f1BotArr = [];
+  let minClearance = Infinity, blocked = false;
+
+  for (let i = 0; i <= N; i++) {
+    const t  = i / N;
+    const d1 = t * totalDist;
+    const d2 = (1 - t) * totalDist;
+
+    // LOS height with Earth bulge correction (Mimosa standard)
+    const bulge = (d1 * d2) / (2 * Re);
+    const losH  = hA + (hB - hA) * t + bulge;
+
+    const r1    = (d1 > 0 && d2 > 0) ? Math.sqrt(lambda * d1 * d2 / (d1 + d2)) : 0;
+    const terr  = elevations[i];
+    const clear = losH - r1 - terr;
+
+    distArr.push(d1 / 1000);
+    terrainArr.push(terr);
+    losArr.push(losH);
+    f1TopArr.push(losH + r1);
+    f1BotArr.push(losH - r1);
+
+    if (i > 0 && i < N) {
+      if (clear < minClearance) minClearance = clear;
+      if (clear < 0) blocked = true;
+    }
+  }
+
+  const maxR1 = Math.sqrt(lambda * totalDist / 4);
+
+  // Smart Y-axis scaling (zoom around Fresnel + antenna zone)
+  const fTop    = Math.max(...f1TopArr);
+  const fBot    = Math.min(...f1BotArr);
+  const tMin    = Math.min(...terrainArr);
+  const zoneTop = fTop;
+  const zoneBot = Math.min(fBot, tMin);
+  const tMax    = Math.max(...terrainArr);
+  const zoneRange = Math.max(tMax - tMin, zoneTop - zoneBot, maxR1 * 4, 5);
+  const margin  = zoneRange * 0.08;
+  const maxH    = Math.max(zoneTop, tMax) + margin * 2;
+  const minH    = tMin - margin;
+
+  const tiltDeg    = Math.atan2(hB - hA, totalDist) * 180 / Math.PI;
+  const headingDeg = (Math.atan2(pB.lng - pA.lng, pB.lat - pA.lat) * 180 / Math.PI + 360) % 360;
+
+  // Free Space Path Loss (dB)
+  const fspl = 20*Math.log10(totalDist) + 20*Math.log10(freqHz) - 147.55;
+  // EIRP A->B, received power at B
+  const eirpA   = txA + gainA - cableA;
+  const rxB     = eirpA - fspl + gainB - cableB;
+  // EIRP B->A, received power at A
+  const eirpB   = txB + gainB - cableB;
+  const rxA     = eirpB - fspl + gainA - cableA;
+  // Thermal noise floor: -174 + NF + 10*log10(BW), assume BW=80MHz
+  const noiseFloor = -174 + nf + 10*Math.log10(80e6);
+  const snrAB   = rxB - noiseFloor;
+  const snrBA   = rxA - noiseFloor;
+  const linkMarginAB = snrAB - snrTgt;
+  const linkMarginBA = snrBA - snrTgt;
+
+  // ── Draw chart ──
+  const fresnelResultEl = document.getElementById('fresnelResult');
+  fresnelResultEl.style.display = 'block';
+  const canvas = document.getElementById('fresnelChart');
+  canvas.style.width  = '100%';
+  canvas.style.height = '300px';
+  // Force reflow so offsetWidth is valid
+  await new Promise(r => requestAnimationFrame(r));
+  await new Promise(r => requestAnimationFrame(r));
+  drawFresnelCanvas(canvas, distArr, terrainArr, losArr, f1TopArr, f1BotArr, blocked, N, minH, maxH);
+
+  // Store data for fullscreen redraw
+  canvas._fresnel = { distArr, terrainArr, losArr, f1TopArr, f1BotArr, blocked, N, minH, maxH };
+
+  // ── Wypełnij tabelkę wyników ──
+  const tbl = document.getElementById('fresnelTable');
+  const statusColor = blocked ? '#e03200' : '#27ae60';
+  const statusText  = blocked ? '❌ Zablokowana' : '✅ Wolna';
+  const fmt1 = v => isFinite(v) ? v.toFixed(1) : '—';
+  const fmt2 = v => isFinite(v) ? v.toFixed(2) : '—';
+  const rowStyle = 'border-bottom:1px solid var(--border-color)';
+  const cellL = 'padding:4px 6px;color:var(--text-secondary)';
+  const cellR = 'padding:4px 6px;font-weight:500;text-align:right';
+  const cellH = 'padding:4px 6px;font-weight:600;background:var(--bg-secondary);text-align:center';
+  const sec = (title) => `<tr><td colspan="3" style="padding:6px 6px 2px;font-weight:600;font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);background:var(--bg-secondary)">${title}</td></tr>`;
+  tbl.innerHTML = `
+    <thead>
+      <tr><th colspan="3" style="${cellH}">Wyniki łącza</th></tr>
+      <tr style="border-bottom:2px solid var(--border-color)">
+        <th style="${cellL}">Parametr</th>
+        <th style="${cellR}">Punkt 1</th>
+        <th style="${cellR}">Punkt 2</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${sec('Geometria łącza')}
+      <tr style="${rowStyle}"><td style="${cellL}">Dystans</td><td colspan="2" style="${cellR}">${fmt2(totalDist/1000)} km</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}">Promień F1 (max)</td><td colspan="2" style="${cellR}">${fmt2(maxR1)} m</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}">Prześwit (min)</td><td colspan="2" style="${cellR};color:${statusColor}">${fmt2(minClearance)} m</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}">Strefa Fresnela</td><td colspan="2" style="${cellR};color:${statusColor}">${statusText}</td></tr>
+      ${sec('Lokalizacja')}
+      <tr style="${rowStyle}"><td style="${cellL}">Wysokość terenu</td><td style="${cellR}">${Math.round(groundA)} m npm</td><td style="${cellR}">${Math.round(groundB)} m npm</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}">Wysokość anteny</td><td style="${cellR}">${Math.round(hA)} m npm</td><td style="${cellR}">${Math.round(hB)} m npm</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}">Pochylenie (tilt)</td><td style="${cellR}">${fmt1(tiltDeg)}°</td><td style="${cellR}">${fmt1(-tiltDeg)}°</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}">Azymut</td><td style="${cellR}">${Math.round(headingDeg)}°</td><td style="${cellR}">${Math.round((headingDeg+180)%360)}°</td></tr>
+      ${sec('Parametry RF')}
+      <tr style="${rowStyle}"><td style="${cellL}">FSPL</td><td colspan="2" style="${cellR}">${fmt1(fspl)} dB</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}">Szum (noise floor)</td><td colspan="2" style="${cellR}">${fmt1(noiseFloor)} dBm</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}">Moc odebrana (Rx)</td><td style="${cellR}">${fmt1(rxA)} dBm</td><td style="${cellR}">${fmt1(rxB)} dBm</td></tr>
+      <tr style="${rowStyle}"><td style="${cellL}"><b>SNR</b></td><td style="${cellR};color:${snrAB>=snrTgt?'#27ae60':'#e03200'}"><b>${fmt1(snrAB)} dB</b></td><td style="${cellR};color:${snrBA>=snrTgt?'#27ae60':'#e03200'}"><b>${fmt1(snrBA)} dB</b></td></tr>
+      <tr><td style="${cellL}">Margines łącza</td><td style="${cellR};color:${linkMarginAB>=0?'#27ae60':'#e03200'}">${fmt1(linkMarginAB)} dB</td><td style="${cellR};color:${linkMarginBA>=0?'#27ae60':'#e03200'}">${fmt1(linkMarginBA)} dB</td></tr>
+    </tbody>`;
+
+  showToast('Obliczono strefę Fresnela', 'success');
+
+  } catch(err) { showToast('Błąd: ' + err.message, 'error'); console.error(err); }
+});
+
+document.getElementById('fresnelChart').addEventListener('click', function() {
+  const d = this._fresnel;
+  if (!d) return;
+  const modal = document.getElementById('fresnelModal');
+  modal.style.display = 'flex';
+  const bigCanvas = document.getElementById('fresnelChartBig');
+  const bw = Math.round(window.innerWidth  * 0.84);
+  const bh = Math.round(window.innerHeight * 0.72);
+  bigCanvas.style.width  = bw + 'px';
+  bigCanvas.style.height = bh + 'px';
+  drawFresnelChart(bigCanvas, d, bw, bh);
+});
+
+document.getElementById('fresnelModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+function drawFresnelChart(canvas, d, W, H) {
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const { distArr, terrainArr, losArr, f1TopArr, f1BotArr, blocked, N, minH, maxH } = d;
+  drawFresnelCanvas(canvas, distArr, terrainArr, losArr, f1TopArr, f1BotArr, blocked, N, minH, maxH);
+}
+function drawFresnelCanvas(canvas, distArr, terrainArr, losArr, f1TopArr, f1BotArr, blocked, N, minH, maxH) {
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.offsetWidth  || canvas.clientWidth  || 500;
+  const H   = canvas.offsetHeight || canvas.clientHeight || 300;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(dpr, dpr);
+
+  const isDark    = document.documentElement.getAttribute('data-theme') === 'dark';
+  const bgColor   = isDark ? '#1a1a2e' : '#ffffff';
+  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)';
+  const textColor = isDark ? '#cccccc' : '#444444';
+  const axisColor = isDark ? '#888888' : '#888888';
+
+  const pad = { top: 20, right: 20, bottom: 50, left: 56 };
+  const cw  = W - pad.left - pad.right;
+  const ch  = H - pad.top  - pad.bottom;
+  const maxD = distArr[N];
+
+  const sx = d  => pad.left + (d  / maxD)                       * cw;
+  const sy = hh => pad.top  + (1 - (hh - minH) / (maxH - minH)) * ch;
+
+  // ── 1. Background ──
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 2. Grid lines ──
+  ctx.strokeStyle = gridColor;
+  ctx.lineWidth   = 1;
+  const ySteps = 7;
+  // Tick co 0.05 km, max 30 ticków
+  const xTickStep = maxD <= 1 ? 0.05 : maxD <= 5 ? 0.25 : maxD <= 20 ? 1.0 : 5.0;
+  const xSteps    = Math.min(30, Math.round(maxD / xTickStep));
+  ctx.font      = '10px sans-serif';
+  ctx.fillStyle = textColor;
+
+  // Y grid + labels
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i <= ySteps; i++) {
+    const frac = i / ySteps;
+    const y    = pad.top + frac * ch;
+    const hVal = maxH - frac * (maxH - minH);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+    ctx.fillStyle = textColor;
+    ctx.fillText(Math.round(hVal), pad.left - 6, y);
+  }
+
+  // X grid + labels
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'top';
+  for (let i = 0; i <= xSteps; i++) {
+    const d    = i * xTickStep;
+    const frac = d / maxD;
+    const x    = pad.left + frac * cw;
+    ctx.strokeStyle = gridColor;
+    ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + ch); ctx.stroke();
+    ctx.fillStyle = textColor;
+    const decimals = xTickStep < 0.1 ? 2 : xTickStep < 1 ? 2 : 1;
+    ctx.fillText(d.toFixed(decimals), x, pad.top + ch + 6);
+  }
+
+  // ── 3. Terrain fill ──
+  ctx.beginPath();
+  ctx.moveTo(sx(distArr[0]), sy(terrainArr[0]));
+  for (let i = 1; i <= N; i++) ctx.lineTo(sx(distArr[i]), sy(terrainArr[i]));
+  ctx.lineTo(sx(distArr[N]), pad.top + ch);
+  ctx.lineTo(sx(distArr[0]), pad.top + ch);
+  ctx.closePath();
+  ctx.fillStyle = isDark ? '#3a6f8a' : '#5b9fbf';
+  ctx.fill();
+
+  // Terrain outline
+  ctx.strokeStyle = isDark ? '#4a8faa' : '#3a7a99';
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(sx(distArr[0]), sy(terrainArr[0]));
+  for (let i = 1; i <= N; i++) ctx.lineTo(sx(distArr[i]), sy(terrainArr[i]));
+  ctx.stroke();
+
+  // ── 4. Fresnel zone fill ──
+  ctx.beginPath();
+  ctx.moveTo(sx(distArr[0]), sy(f1TopArr[0]));
+  for (let i = 1; i <= N; i++) ctx.lineTo(sx(distArr[i]), sy(f1TopArr[i]));
+  for (let i = N; i >= 0; i--) ctx.lineTo(sx(distArr[i]), sy(f1BotArr[i]));
+  ctx.closePath();
+  ctx.fillStyle = blocked ? 'rgba(220,50,0,0.18)' : 'rgba(255,149,0,0.18)';
+  ctx.fill();
+
+  // ── 5. Fresnel boundary lines (dashed) ──
+  const f1Color = blocked ? '#e03200' : '#ff9500';
+  ctx.strokeStyle = f1Color;
+  ctx.lineWidth   = 1.5;
+  ctx.setLineDash([8, 5]);
+  [f1TopArr, f1BotArr].forEach(arr => {
+    ctx.beginPath();
+    ctx.moveTo(sx(distArr[0]), sy(arr[0]));
+    for (let i = 1; i <= N; i++) ctx.lineTo(sx(distArr[i]), sy(arr[i]));
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // ── 6. LOS line ──
+  ctx.strokeStyle = '#111111';
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(sx(distArr[0]), sy(losArr[0]));
+  ctx.lineTo(sx(distArr[N]), sy(losArr[N]));
+  ctx.stroke();
+
+  // ── 7. A / B labels ──
+  ctx.font      = 'bold 12px sans-serif';
+  ctx.fillStyle = isDark ? '#ffffff' : '#111111';
+  ctx.textBaseline = 'bottom';
+  ctx.textAlign = 'left';
+  ctx.fillText('A', sx(distArr[0]) + 4, sy(losArr[0]) - 4);
+  ctx.textAlign = 'right';
+  ctx.fillText('B', sx(distArr[N]) - 4, sy(losArr[N]) - 4);
+
+  // ── 8. Axis titles ──
+  ctx.font      = '11px sans-serif';
+  ctx.fillStyle = axisColor;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('Distance (km)', pad.left + cw / 2, H - 2);
+
+  ctx.save();
+  ctx.translate(13, pad.top + ch / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textBaseline = 'top';
+  ctx.fillText('Altitude (m)', 0, 0);
+  ctx.restore();
+
+  // ── 9. Border ──
+  ctx.strokeStyle = isDark ? '#444' : '#cccccc';
+  ctx.lineWidth   = 1;
+  ctx.strokeRect(pad.left, pad.top, cw, ch);
+}
+
+// ── Fresnel canvas tooltip ──
+(function() {
+  let tipEl = null;
+  function getTip() {
+    if (!tipEl) {
+      tipEl = document.createElement('div');
+      tipEl.style.cssText = 'position:fixed;background:rgba(0,0,0,.75);color:#fff;padding:4px 8px;border-radius:6px;font-size:12px;pointer-events:none;display:none;z-index:99999;white-space:nowrap';
+      document.body.appendChild(tipEl);
+    }
+    return tipEl;
+  }
+
+  function attachTooltip(canvas) {
+    canvas.addEventListener('mousemove', function(e) {
+      const d = canvas._fresnel;
+      if (!d) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const scaleX = canvas.width / (window.devicePixelRatio||1) / rect.width;
+      const px = mx * scaleX;
+      const { distArr, terrainArr, losArr, f1TopArr, f1BotArr, N, pad, minH, maxH } = d;
+      const cw = canvas.width/(window.devicePixelRatio||1) - pad.left - pad.right;
+      const ch = canvas.height/(window.devicePixelRatio||1) - pad.top - pad.bottom;
+      if (px < pad.left || px > pad.left + cw) { getTip().style.display='none'; return; }
+      const t = (px - pad.left) / cw;
+      const idx = Math.round(t * N);
+      if (idx < 0 || idx > N) { getTip().style.display='none'; return; }
+      const tip = getTip();
+      tip.innerHTML =
+        '<b>' + distArr[idx].toFixed(3) + ' km</b><br>' +
+        'Teren: <b>' + Math.round(terrainArr[idx]) + ' m n.p.m.</b><br>' +
+        'LOS: ' + losArr[idx].toFixed(1) + ' m &nbsp;|&nbsp; F1±' + (f1TopArr[idx]-losArr[idx]).toFixed(1) + ' m';
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top  = (e.clientY - 40) + 'px';
+    });
+    canvas.addEventListener('mouseleave', () => { getTip().style.display='none'; });
+  }
+
+  // Attach to both small and big canvas
+  document.addEventListener('DOMContentLoaded', () => {
+    attachTooltip(document.getElementById('fresnelChart'));
+    attachTooltip(document.getElementById('fresnelChartBig'));
+  });
+})();
+
+
+
+</script>
+<!-- Fresnel fullscreen modal -->
+<div id="fresnelModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center">
+  <div style="position:relative;width:90vw;max-width:1100px;background:var(--color-surface);border-radius:var(--radius-lg);padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.5)">
+    <button onclick="document.getElementById('fresnelModal').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--color-text)">✕</button>
+    <canvas id="fresnelChartBig" style="width:100%;border-radius:var(--radius-md)"></canvas>
+  </div>
+</div>
+
+</body>
+</html>
