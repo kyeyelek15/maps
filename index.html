@@ -626,7 +626,7 @@ const layerSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/
   maxZoom: 19, crossOrigin: true
 });
 layerStreet.addTo(map);
-L.control.layers({ '🗺 Mapa': layerStreet, '🏘 Ulice i budynki': layerOSMBright, '⛰ Topograficzna': layerTopo, '☀ Jasna': layerLight, '🌙 Ciemna': layerDark, '🛰 Satelita': layerSatellite }, {}, { position: 'topright', collapsed: false }).addTo(map);
+L.control.layers({ '🗺️ Mapa': layerStreet, '🌃 Ulice i budynki': layerOSMBright, '⛰️ Topograficzna': layerTopo, '🔆 Jasna': layerLight, '🌙 Ciemna': layerDark, '🛰️ Satelita': layerSatellite }, {}, { position: 'topright', collapsed: false }).addTo(map);
 
 // ============================================================
 // LEAFLET DRAW
